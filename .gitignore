@@ -1,0 +1,62 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# VSCode settings
+.vscode/
+
+# macOS system files
+.DS_Store
+
+# Windows system files
+Thumbs.db
+desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Python virtual environments
+env/
+venv/
+ENV/
+.venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Testing
+htmlcov/
+.tox/
+coverage.xml
+.cache/
+pytest_cache/
+
+# Application data / output (keep config, ignore temp and CSV)
+app_data/*.tmp
+app_data/*.csv
+app_data/*_backup.*
+!app_data/*.npz
+!app_data/*.json
+
+# Compiled python
+src/__pycache__/
+
+# Office and temp docs
+~$*
+*.docx
+*.zip
+
+# Experiments or user-specific folders (optional)
+эксперименты/
