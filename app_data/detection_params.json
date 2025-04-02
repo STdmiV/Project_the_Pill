@@ -1,0 +1,8 @@
+{
+  "SCALE": 0.75,
+  "BLUR_KERNEL": 1,
+  "CANNY_LOW": 43,
+  "CANNY_HIGH": 196,
+  "MIN_AREA": 1600,
+  "MAX_AREA": 100000
+}

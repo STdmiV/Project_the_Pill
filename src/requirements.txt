@@ -1,0 +1,8 @@
+opencv-python
+opencv-contrib-python
+numpy
+PyQt5
+pyModbusTCP
+pandas
+Pillow
+scipy
