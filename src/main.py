@@ -65,14 +65,11 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.create_working_mode_tab(), "Working Mode")
         self.tabs.addTab(QWidget(), "Data Collection")
         self.tabs.addTab(QWidget(), "Data Analysis")
-        self.tabs.addTab(self.create_modbus_tab(), "Modbus TCP")  # <-- New Modbus tab added here
-        self.tabs.addTab(self.create_calibration_tab(), "Calibration") # New Calibration tab added here
+        self.tabs.addTab(self.create_modbus_tab(), "Modbus TCP")  
+        self.tabs.addTab(self.create_calibration_tab(), "Calibration") 
 
         
         top_layout.addWidget(self.tabs)
-        
-
-
 
                 # --- Parameter Controls Panel ---
         self.param_control_panel = self.create_param_controls()
@@ -949,56 +946,118 @@ def send_robot_data(detections, conversion_factor, robot_comm, category_mapping=
             category_code=category_code
         )
 
-class DebugWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Detection Debug View")
-        self.resize(800, 400)
-        self.setLayout(QHBoxLayout())
+import cv2
+import numpy as np
+import random
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QImage, QPixmap
 
+class DebugWindow(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Detection Debug View")
+        self.resize(800, 600)
+        self._init_ui()
+        self.canny_image: np.ndarray | None = None
+        self.contour_image: np.ndarray | None = None
+
+    def _init_ui(self) -> None:
+        """Initializes the UI with a vertical layout without external captions."""
+        layout = QVBoxLayout(self)
         self.canny_label = QLabel()
         self.canny_label.setAlignment(Qt.AlignCenter)
         self.contour_label = QLabel()
         self.contour_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.canny_label)
+        layout.addWidget(self.contour_label)
 
-        self.layout().addWidget(self.canny_label)
-        self.layout().addWidget(self.contour_label)
+    def update_images(self, canny_img: np.ndarray, contour_img: np.ndarray) -> None:
+        """
+        Updates the displayed images.
 
-        self.canny_image = None
-        self.contour_image = None
-
-    def update_images(self, canny_img, contour_img):
+        :param canny_img: The image after Canny edge detection.
+        :param contour_img: The binary image containing contours.
+        """
         self.canny_image = canny_img
         self.contour_image = contour_img
         self._update_display()
 
-    def _update_display(self):
+    def _update_display(self) -> None:
+        """Updates the display by overlaying captions, scaling, and updating labels."""
         if self.canny_image is not None:
-            self.canny_label.setPixmap(self._fit_pixmap(self.canny_image, self.canny_label))
+            # Overlay caption on canny image
+            canny_with_caption = self._overlay_caption(self.canny_image, "Canny Image")
+            self.canny_label.setPixmap(self._fit_pixmap(canny_with_caption, self.canny_label))
         if self.contour_image is not None:
-            self.contour_label.setPixmap(self._fit_pixmap(self.contour_image, self.contour_label))
+            # Colorize contours, overlay caption
+            colored_contours = self._colorize_contours(self.contour_image)
+            contours_with_caption = self._overlay_caption(colored_contours, "Contours Image")
+            self.contour_label.setPixmap(self._fit_pixmap(contours_with_caption, self.contour_label))
 
-    def _fit_pixmap(self, image, label):
-        # Resize keeping aspect ratio
+    def _fit_pixmap(self, image: np.ndarray, label: QLabel) -> QPixmap:
+        """
+        Scales the image to fit within the given QLabel while preserving aspect ratio.
+
+        :param image: The source image as a numpy array.
+        :param label: The QLabel to display the image.
+        :return: A QPixmap of the scaled image.
+        """
         h, w = image.shape[:2]
-        label_w = label.width()
-        label_h = label.height()
-
-        scale = min(label_w / w, label_h / h)
-        new_w = int(w * scale)
-        new_h = int(h * scale)
-
+        label_w, label_h = label.width(), label.height()
+        scale = min(label_w / w, label_h / h) if w and h else 1
+        new_w, new_h = int(w * scale), int(h * scale)
         resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
-        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-        qimg = QImage(rgb.data, rgb.shape[1], rgb.shape[0], rgb.strides[0], QImage.Format_RGB888)
+        if len(resized.shape) == 2 or resized.shape[2] == 1:
+            resized = cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
+        else:
+            resized = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        qimg = QImage(resized.data, new_w, new_h, resized.strides[0], QImage.Format_RGB888)
         return QPixmap.fromImage(qimg)
 
-    def resizeEvent(self, event):
+    def _overlay_caption(self, image: np.ndarray, caption: str) -> np.ndarray:
+        """
+        Overlays a caption text onto the image.
+
+        :param image: Source image as a numpy array.
+        :param caption: Text to overlay.
+        :return: Image with the caption overlay.
+        """
+        img = image.copy()
+        # Convert grayscale to BGR if necessary
+        if len(img.shape) == 2 or img.shape[2] == 1:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1
+        thickness = 2
+        text_size, _ = cv2.getTextSize(caption, font, font_scale, thickness)
+        text_width, text_height = text_size
+        x, y = 10, text_height + 10
+        # Draw a filled rectangle as background for the caption
+        cv2.rectangle(img, (x - 5, y - text_height - 5), (x + text_width + 5, y + 5), (0, 0, 0), cv2.FILLED)
+        # Put the caption text over the rectangle
+        cv2.putText(img, caption, (x, y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+        return img
+
+    def _colorize_contours(self, binary_image: np.ndarray) -> np.ndarray:
+        """
+        Finds contours in a binary image and fills each with a random color.
+
+        :param binary_image: A binary image (e.g., output from Canny or a drawn contour mask).
+        :return: A color image with contours filled with random colors.
+        """
+        colored = np.zeros((binary_image.shape[0], binary_image.shape[1], 3), dtype=np.uint8)
+        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+            cv2.drawContours(colored, [cnt], -1, color, thickness=cv2.FILLED)
+            cv2.drawContours(colored, [cnt], -1, (0, 0, 0), thickness=1)
+        return colored
+
+    def resizeEvent(self, event) -> None:
+        """Handles window resize events to update the display."""
         self._update_display()
         super().resizeEvent(event)
-
-
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
