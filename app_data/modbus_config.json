@@ -1,0 +1,9 @@
+{
+    "host": "192.168.0.10",
+    "port": "502",
+    "req_addr": "100",
+    "is_coil": true,
+    "max_objs": "5",
+    "num_obj_addr": "200",
+    "data_start_addr": "201"
+}

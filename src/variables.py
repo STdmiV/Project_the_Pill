@@ -85,10 +85,22 @@ REFERENCE_OBJECT_HEIGHT_MM = 297.0  # Height of A4 in mm
 REFERENCE_ASPECT_RATIO = REFERENCE_OBJECT_WIDTH_MM / REFERENCE_OBJECT_HEIGHT_MM
 ASPECT_RATIO_TOLERANCE = 0.01  # Allowed deviation in aspect ratio detection
 
-# Modbus TCP configuration (Robot Communication)
-MODBUS_TCP_HOST = "192.168.0.10"
-MODBUS_TCP_PORT = 502
-MODBUS_TIMEOUT = 5
+      
+# Modbus TCP configuration (PLC/Robot Communication)
+MODBUS_TCP_HOST = "192.168.0.10" # Default PLC/Robot IP
+MODBUS_TCP_PORT = 502            # Default Modbus TCP Port
+MODBUS_TIMEOUT = 5               # Connection timeout in seconds
+
+# --- Additions for PLC Data Request ---
+MODBUS_DATA_REQUEST_ADDR = 100   # <== CHANGE THIS: Address of the PLC register/coil for requesting data
+MODBUS_IS_REQUEST_FLAG_COIL = False # <== CHANGE THIS: True if the request flag is a Coil, False if a Holding Register
+
+# --- Additions for Multi-Object Packets ---
+MODBUS_MAX_OBJECTS = 5              # <== CHANGE THIS: Max objects per packet PLC can handle
+MODBUS_NUM_OBJECTS_ADDR = 200       # <== CHANGE THIS: Address for register holding the number of objects
+MODBUS_OBJECT_DATA_START_ADDR = 201 # <== CHANGE THIS: Start address for the data of the first object
+MODBUS_REGISTERS_PER_OBJECT = 7     # Number of registers used per object (id, x, y, w, h, angle, category) - Usually stays 7 based on your old send_data
+
 
 # Object categories (example category codes for robot communication)
 OBJECT_CATEGORIES = {

@@ -2,11 +2,11 @@
 # It uses the pyModbusTCP library to establish a connection with the robot and send data to it.
 # robot_comm.py
 #pip install pyModbusTCP 
-
-
+      
+import logging # Ensure logging is imported if not already
+from datetime import datetime # Ensure datetime is imported
 from pyModbusTCP.client import ModbusClient
-import logging
-# Removed unused import
+import os
 
 class RobotComm:
     def __init__(self, host="192.168.0.10", port=502, timeout=5, log_file='app_data/error_log.txt'):
@@ -22,7 +22,7 @@ class RobotComm:
         self.client = ModbusClient(host=self.host, port=self.port, timeout=self.timeout)
         self.connected = False
 
-        import os
+        
         if not os.path.exists(os.path.dirname(self.log_file)):
             os.makedirs(os.path.dirname(self.log_file))
         logging.basicConfig(filename=self.log_file,
@@ -49,7 +49,71 @@ class RobotComm:
             self.connected = False
             logging.info("Disconnected")
             logging.info(f"Disconnected from Modbus server.")
+    def read_request_flag(self, address, is_coil=False):
+        """
+        Reads a single register or coil to check for a data request flag.
+        Args:
+            address: Address of the flag register/coil.
+            is_coil: Set to True if reading a coil, False for Holding Register.
+        Returns:
+            The value read (e.g., 0 or 1), or None on error.
+        """
+        if not self.connected:
+            logging.error("Cannot read flag: Not connected.")
+            # print(f"[{datetime.now()}] Not connected. Cannot read flag.") # Keep logging primary
+            return None
 
+        try:
+            if is_coil:
+                # Read Coils (function code 1)
+                result = self.client.read_coils(address, 1)
+            else:
+                # Read Holding Registers (function code 3)
+                result = self.client.read_holding_registers(address, 1)
+
+            if result: # Check if result is not None or empty
+                # logging.info(f"Read flag at address {address}: {result[0]}") # Log only on change or request?
+                return result[0] # Return the first (and only) value
+            else:
+                last_ex = self.client.last_exception()
+                last_ex_str = str(last_ex) if last_ex else "Unknown read error"
+                logging.error(f"Failed to read flag at address {address}. Error: {last_ex_str}")
+                # print(f"[{datetime.now()}] Failed to read flag at address {address}. Error: {last_ex_str}")
+                return None
+        except Exception as e:
+            logging.error(f"Exception during flag reading at address {address}: {str(e)}")
+            # print(f"[{datetime.now()}] Exception during reading flag: {e}")
+            return None
+
+    def reset_request_flag(self, address, is_coil=False):
+        """
+        Resets the request flag by writing 0 to it.
+        Args:
+            address: Address of the flag register/coil.
+            is_coil: Set to True if writing to a coil.
+        Returns:
+            True on success, False on failure.
+        """
+        if not self.connected:
+            logging.error("Cannot reset flag: Not connected.")
+            return False
+
+        try:
+            if is_coil:
+                # Write Single Coil (function code 5)
+                success = self.client.write_single_coil(address, False) # False means OFF (0)
+            else:
+                # Write Single Register (function code 6)
+                success = self.client.write_single_register(address, 0)
+
+            if success:
+                logging.info(f"Successfully reset flag at address {address}")
+            else:
+                logging.error(f"Failed to reset flag at address {address}")
+            return success
+        except Exception as e:
+            logging.error(f"Exception during flag reset at address {address}: {str(e)}")
+            return False
 
 
 
