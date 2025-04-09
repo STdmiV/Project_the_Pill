@@ -1,0 +1,1 @@
+2025-04-09 13:44:34,853 - ERROR - Error loading data: [Errno 2] No such file or directory: 'C:\\Users\\Stas\\Desktop\\Pill_project_workspace\\app_data\\collected_data.csv'
