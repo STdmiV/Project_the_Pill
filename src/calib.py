@@ -267,7 +267,6 @@ def calibrate_camera_gui(source_type="video", camera_index=0, video_path=None, m
             print(f"[INFO] Reached max captures = {max_captures}")
             break
 
-        time.sleep(1 / 30.0)
 
     cap.release()
 

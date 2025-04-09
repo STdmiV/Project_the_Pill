@@ -1,1 +1,275 @@
 2025-04-09 13:44:34,853 - ERROR - Error loading data: [Errno 2] No such file or directory: 'C:\\Users\\Stas\\Desktop\\Pill_project_workspace\\app_data\\collected_data.csv'
+2025-04-09 21:12:32,953 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-09 21:12:32,991 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 21:12:52,848 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 21:12:52,848 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 21:12:52,969 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 21:12:56,517 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:12:56,524 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 21:12:57,723 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:00,096 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:02,160 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:02,922 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:03,517 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:04,121 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:04,750 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:04,978 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:05,214 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:05,485 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:05,749 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:05,992 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:06,230 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:06,474 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:06,702 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:06,929 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:07,139 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:07,787 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 21:13:07,789 [WARNI] [MainThread] Working area detection failed or was rejected by user.
+2025-04-09 21:13:07,790 [WARNI] [MainThread] Working area confirmation failed or was cancelled.
+2025-04-09 21:13:11,490 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 21:13:11,491 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 21:13:11,598 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 21:13:16,738 [INFO ] [MainThread] User accepted the working area.
+2025-04-09 21:13:16,740 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-09 21:13:16,740 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-09 21:13:16,741 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-09 21:13:16,742 [INFO ] [Thread-6 (thread_func)] Working mode thread started.
+2025-04-09 21:13:16,742 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-09 21:13:55,596 [INFO ] [Thread-6 (thread_func)] Video source ended or read failed.
+2025-04-09 21:13:55,613 [INFO ] [Thread-6 (thread_func)] Working mode thread finished. Video capture released.
+2025-04-09 21:14:18,007 [INFO ] [MainThread] Working mode is not running.
+2025-04-09 21:14:19,207 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 21:14:19,207 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 21:14:19,293 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 21:14:59,684 [INFO ] [MainThread] User accepted the working area.
+2025-04-09 21:14:59,686 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-09 21:14:59,687 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-09 21:14:59,687 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-09 21:14:59,688 [INFO ] [Thread-7 (thread_func)] Working mode thread started.
+2025-04-09 21:14:59,688 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-09 21:15:38,231 [INFO ] [Thread-7 (thread_func)] Video source ended or read failed.
+2025-04-09 21:15:38,245 [INFO ] [Thread-7 (thread_func)] Working mode thread finished. Video capture released.
+2025-04-09 21:15:44,092 [INFO ] [MainThread] Working mode is not running.
+2025-04-09 21:15:48,774 [INFO ] [MainThread] Starting calibration with source type: video
+2025-04-09 21:15:48,775 [INFO ] [Thread-8 (thread_func_calib)] Calibration thread started.
+2025-04-09 21:17:49,711 [INFO ] [MainThread] Calibration stop requested.
+2025-04-09 21:18:54,599 [INFO ] [Thread-8 (thread_func_calib)] Calibration thread finished.
+2025-04-09 21:18:54,599 [INFO ] [MainThread] Calibration process finished successfully.
+2025-04-09 21:19:12,385 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 21:19:12,385 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 21:19:12,470 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 21:19:22,387 [INFO ] [MainThread] User accepted the working area.
+2025-04-09 21:19:22,389 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-09 21:19:22,390 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-09 21:19:22,390 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-09 21:19:22,391 [INFO ] [Thread-9 (thread_func)] Working mode thread started.
+2025-04-09 21:19:22,391 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-09 21:20:00,071 [INFO ] [Thread-9 (thread_func)] Video source ended or read failed.
+2025-04-09 21:20:00,087 [INFO ] [Thread-9 (thread_func)] Working mode thread finished. Video capture released.
+2025-04-09 21:20:02,024 [INFO ] [MainThread] Working mode is not running.
+2025-04-09 21:41:08,064 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-09 21:41:08,075 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 21:42:52,874 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-09 21:42:52,885 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 21:48:45,284 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-09 21:48:45,296 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 21:50:29,194 [INFO ] [MainThread] Modbus settings saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-09 21:50:49,887 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-09 21:50:49,888 [INFO ] [MainThread] Working mode is not running.
+2025-04-09 21:50:49,888 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-09 21:50:49,888 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-09 21:50:49,889 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 21:50:49,889 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-09 21:50:49,903 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-09 22:11:03,724 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-09 22:11:03,735 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:11:19,054 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 22:11:19,054 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 22:11:19,149 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 22:11:22,670 [INFO ] [MainThread] User accepted the working area.
+2025-04-09 22:11:22,672 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-09 22:11:22,673 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-09 22:11:22,673 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-09 22:11:48,734 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-09 22:11:48,744 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:12:03,853 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 22:12:03,854 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 22:12:03,948 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 22:12:11,233 [INFO ] [MainThread] User accepted the working area.
+2025-04-09 22:12:11,235 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-09 22:12:11,236 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-09 22:12:11,236 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-09 22:29:58,278 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-09 22:29:58,290 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:29:58,527 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-09 22:30:11,428 [ERROR] [MainThread] Failed to create DebugWindow: 'DebugWindow' object has no attribute 'load_modbus_settings'
+2025-04-09 22:30:54,280 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 22:30:54,281 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 22:30:54,388 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 22:30:58,163 [INFO ] [MainThread] User accepted the working area.
+2025-04-09 22:30:58,165 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-09 22:30:58,166 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-09 22:30:58,167 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-09 22:30:58,167 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-09 22:30:58,168 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-09 22:31:49,488 [INFO ] [WorkingModeThread] Video source ended or read failed.
+2025-04-09 22:31:49,504 [INFO ] [WorkingModeThread] Working mode thread finished. Video capture released.
+2025-04-09 22:33:30,618 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-09 22:33:30,618 [INFO ] [MainThread] Working mode is not running.
+2025-04-09 22:33:30,619 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-09 22:33:30,619 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-09 22:33:30,619 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:33:30,619 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-09 22:33:30,631 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-09 22:37:05,956 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-09 22:37:05,967 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:37:06,189 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-09 22:37:08,442 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 22:37:08,442 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 22:37:08,542 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 22:37:25,857 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:25,864 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 22:37:28,807 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:28,809 [WARNI] [MainThread] Working area detection failed or was rejected by user.
+2025-04-09 22:37:28,809 [WARNI] [MainThread] Working area confirmation failed or was cancelled.
+2025-04-09 22:37:30,204 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 22:37:30,205 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 22:37:30,292 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 22:37:31,458 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:31,464 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 22:37:32,928 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:33,531 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:34,022 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:34,520 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:34,730 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:34,923 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:35,124 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:35,378 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:35,588 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:37,128 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:37,130 [WARNI] [MainThread] Working area detection failed or was rejected by user.
+2025-04-09 22:37:37,130 [WARNI] [MainThread] Working area confirmation failed or was cancelled.
+2025-04-09 22:37:39,703 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 22:37:39,704 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 22:37:39,790 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 22:37:41,197 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:41,204 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 22:37:51,522 [INFO ] [MainThread] User rejected the working area.
+2025-04-09 22:37:52,161 [INFO ] [MainThread] User accepted the working area.
+2025-04-09 22:37:56,913 [INFO ] [MainThread] User accepted the working area.
+2025-04-09 22:37:56,914 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-09 22:37:56,915 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-09 22:37:56,915 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-09 22:37:56,916 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-09 22:37:56,916 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-09 22:38:35,941 [INFO ] [WorkingModeThread] Video source ended or read failed.
+2025-04-09 22:38:35,958 [INFO ] [WorkingModeThread] Working mode thread finished. Video capture released.
+2025-04-09 22:38:46,509 [INFO ] [MainThread] Working mode is not running.
+2025-04-09 22:41:32,803 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-09 22:41:32,803 [INFO ] [MainThread] Working mode is not running.
+2025-04-09 22:41:32,803 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-09 22:41:32,803 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-09 22:41:32,804 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:41:32,804 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-09 22:41:32,815 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-09 22:48:39,202 [INFO ] [MainThread] == App Start ==
+2025-04-09 22:48:39,575 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-09 22:48:39,580 [INFO ] [MainThread] Loaded detection params from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:48:42,641 [ERROR] [MainThread] Error initializing video source:
+Video file not found: 
+2025-04-09 22:49:05,569 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/circular_white.mp4
+2025-04-09 22:49:05,580 [INFO ] [MainThread] Using calibration file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 22:49:05,580 [INFO ] [MainThread] Modbus communication is disabled.
+2025-04-09 22:49:05,670 [INFO ] [MainThread] Waiting for user confirm working area...
+2025-04-09 22:49:09,152 [INFO ] [MainThread] User rejected area.
+2025-04-09 22:49:09,159 [INFO ] [MainThread] Waiting for user confirm working area...
+2025-04-09 22:49:22,680 [INFO ] [MainThread] User rejected area.
+2025-04-09 22:49:22,682 [WARNI] [MainThread] WA detect failed/rejected.
+2025-04-09 22:49:22,682 [ERROR] [MainThread] Working area confirmation failed/cancelled.
+2025-04-09 22:49:27,092 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/circular_white.mp4
+2025-04-09 22:49:27,093 [INFO ] [MainThread] Using calibration file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 22:49:27,093 [INFO ] [MainThread] Modbus communication is disabled.
+2025-04-09 22:49:27,181 [INFO ] [MainThread] Waiting for user confirm working area...
+2025-04-09 22:49:30,196 [INFO ] [MainThread] User accepted area.
+2025-04-09 22:49:30,198 [INFO ] [MainThread] Working area confirmed. Conv Factor: 0.2081
+2025-04-09 22:49:30,198 [INFO ] [MainThread] Using ID config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-09 22:49:30,206 [INFO ] [MainThread] Object detector initialized.
+2025-04-09 22:49:30,207 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-09 22:49:30,207 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-09 22:49:45,564 [INFO ] [MainThread] Shutdown requested...
+2025-04-09 22:49:45,565 [INFO ] [MainThread] Work stop requested.
+2025-04-09 22:49:45,587 [INFO ] [WorkingModeThread] Work thread finished. Capture released.
+2025-04-09 22:49:45,591 [INFO ] [MainThread] Work thread stopped.
+2025-04-09 22:49:45,591 [WARNI] [MainThread] Calib not running.
+2025-04-09 22:49:45,591 [WARNI] [MainThread] Not connected.
+2025-04-09 22:49:45,592 [INFO ] [MainThread] Modbus settings saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-09 22:49:45,593 [INFO ] [MainThread] Detection params saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:49:45,593 [INFO ] [MainThread] Cleanup finished.
+2025-04-09 22:49:45,609 [INFO ] [MainThread] Received thread stopped signal. Updating UI.
+2025-04-09 22:49:45,610 [INFO ] [MainThread] == App Exit (0) ==
+2025-04-09 22:51:45,423 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-09 22:51:45,435 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:51:45,666 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-09 22:51:47,362 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 22:51:47,363 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 22:51:47,454 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 22:51:49,139 [INFO ] [MainThread] User accepted the working area.
+2025-04-09 22:51:49,142 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-09 22:51:49,142 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-09 22:51:49,142 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-09 22:51:49,143 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-09 22:51:49,143 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-09 22:51:58,852 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-09 22:51:58,853 [INFO ] [MainThread] Working mode stop requested.
+2025-04-09 22:51:58,913 [INFO ] [WorkingModeThread] Working mode thread finished. Video capture released.
+2025-04-09 22:51:58,917 [INFO ] [MainThread] Working thread stopped.
+2025-04-09 22:51:58,917 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-09 22:51:58,918 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-09 22:51:58,919 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:51:58,919 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-09 22:51:58,933 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-09 22:58:33,771 [INFO ] [MainThread] == App Start ==
+2025-04-09 22:58:33,998 [INFO ] [MainThread] Loaded MB settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-09 22:58:33,999 [INFO ] [MainThread] Loaded detect params from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:58:59,846 [INFO ] [MainThread] Using source: C:/Users/Stas/Videos/Pillproject/circular_white.mp4
+2025-04-09 22:58:59,848 [INFO ] [MainThread] Using calib file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 22:58:59,848 [INFO ] [MainThread] Modbus disabled.
+2025-04-09 22:58:59,937 [INFO ] [MainThread] Wait user confirm area...
+2025-04-09 22:59:10,308 [INFO ] [MainThread] Shutdown req...
+2025-04-09 22:59:10,308 [INFO ] [MainThread] Work mode not running.
+2025-04-09 22:59:10,308 [WARNI] [MainThread] Calib not running.
+2025-04-09 22:59:10,309 [WARNI] [MainThread] Modbus not connected.
+2025-04-09 22:59:10,309 [INFO ] [MainThread] MB settings saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-09 22:59:11,818 [INFO ] [MainThread] Detect params saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:59:11,818 [INFO ] [MainThread] Cleanup finished.
+2025-04-09 22:59:11,839 [INFO ] [MainThread] Wait user confirm area...
+2025-04-09 22:59:11,842 [WARNI] [MainThread] WA detect fail/reject.
+2025-04-09 22:59:11,843 [ERROR] [MainThread] Working area not confirmed.
+2025-04-09 22:59:11,949 [INFO ] [MainThread] == App Exit (0) ==
+2025-04-09 22:59:52,706 [INFO ] [MainThread] == App Start ==
+2025-04-09 22:59:52,932 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-09 22:59:52,933 [INFO ] [MainThread] Loaded detection params from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 22:59:54,647 [ERROR] [MainThread] Error initializing video source:
+Video file not found: 
+2025-04-09 23:00:18,968 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-09 23:00:18,978 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 23:00:19,199 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-09 23:00:23,175 [INFO ] [MainThread] Using working source: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-09 23:00:23,175 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-09 23:00:23,265 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-09 23:00:26,382 [INFO ] [MainThread] User accepted the working area.
+2025-04-09 23:00:26,384 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-09 23:00:26,384 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-09 23:00:26,384 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-09 23:00:26,385 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-09 23:00:26,385 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-09 23:01:08,253 [INFO ] [MainThread] Working mode stop requested.
+2025-04-09 23:01:08,338 [INFO ] [WorkingModeThread] Working mode thread finished. Video capture released.
+2025-04-09 23:01:08,342 [INFO ] [MainThread] Working thread stopped.
+2025-04-09 23:01:17,895 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-09 23:01:17,895 [INFO ] [MainThread] Working mode is not running.
+2025-04-09 23:01:17,895 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-09 23:01:17,896 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-09 23:01:17,896 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-09 23:01:17,896 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-09 23:01:17,910 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
