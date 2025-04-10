@@ -1004,7 +1004,7 @@ class MainWindow(QMainWindow):
                         break
 
                     result = self._detector.process_frame(
-                        frame, frame_counter, mask=self.working_area_mask, mode="process"
+                        frame, frame_counter, working_area_mask=self.working_area_mask, mode="process"
                     )
 
                     display_image = None
@@ -1180,14 +1180,52 @@ class MainWindow(QMainWindow):
         # self.working_video_label.clear()
         # self.working_video_label.setText("Working mode stopped.")
 
-
     def confirm_working_area(self, overlay_frame):
         """
         Shows the detected working area overlay and waits for user confirmation.
-        Runs synchronously in the main GUI thread using QEventLoop.
+        Attempts to guarantee immediate visual/structural removal of previous widgets.
         """
-        #from PyQt5.QtCore import QEventLoop # Import locally if not global
-        self._confirmation_result = None # Reset result
+        # --- Force Removal of Previous Confirmation Widget ---
+        if hasattr(self, 'working_confirm_layout_widget') and self.working_confirm_layout_widget is not None:
+            logging.debug("Attempting to forcefully remove previous confirmation widget.")
+            try:
+                old_widget = self.working_confirm_layout_widget
+                if old_widget: # Check if the instance is valid
+
+                    # 1. Hide it immediately
+                    old_widget.hide()
+                    logging.debug(f"Hid old widget: {old_widget}")
+
+                    # 2. Remove it from its parent layout
+                    parent = old_widget.parentWidget()
+                    if parent and parent.layout():
+                        logging.debug(f"Attempting to remove old widget from layout: {parent.layout()}")
+                        # removeWidget returns the item, doesn't delete the widget itself
+                        parent.layout().removeWidget(old_widget)
+                        logging.debug(f"Removed old widget from layout.")
+                    else:
+                        logging.warning("Could not find parent layout for old confirmation widget during removal.")
+
+                    # 3. Schedule for actual deletion
+                    old_widget.deleteLater()
+                    logging.debug(f"Scheduled old widget for deletion.")
+
+                # 4. Clear the reference in MainWindow IMMEDIATELY
+                self.working_confirm_layout_widget = None
+                logging.debug("Set self.working_confirm_layout_widget to None after forced removal.")
+
+            except RuntimeError as e_runtime:
+                 # Catch potential "wrapped C/C++ object of type ... has been deleted"
+                 logging.error(f"RuntimeError removing old widget (might already be deleted): {e_runtime}")
+                 self.working_confirm_layout_widget = None # Ensure reference is cleared
+            except Exception as e_force_remove:
+                logging.error(f"Error during forceful removal of previous confirmation widget: {e_force_remove}")
+                # Attempt to clear reference anyway
+                self.working_confirm_layout_widget = None
+        # --- End of Force Removal ---
+
+
+        self._confirmation_result = None
 
         # --- Display Overlay ---
         try:
@@ -1197,22 +1235,20 @@ class MainWindow(QMainWindow):
              else:
                   logging.error("Failed to create pixmap for working area confirmation.")
                   self.working_video_label.setText("Error displaying confirmation frame.")
-                  return False # Cannot confirm without seeing it
+                  return False
         except Exception as e:
              logging.error(f"Error displaying working area confirmation frame: {e}")
              self.working_video_label.setText("Error displaying confirmation frame.")
              return False
 
+        # --- Create NEW Confirmation Controls ---
+        confirm_widget = QWidget()
+        # Assign the NEW widget instance to the attribute
+        self.working_confirm_layout_widget = confirm_widget
+        logging.debug(f"Created new confirmation widget: {self.working_confirm_layout_widget}")
 
-        # --- Create Confirmation Controls ---
-        # Check if layout exists, remove widgets if it does
-        if hasattr(self, "working_confirm_layout_widget"):
-             self.working_confirm_layout_widget.deleteLater()
-
-        # Create a new widget and layout for buttons
-        self.working_confirm_layout_widget = QWidget()
         confirm_layout = QHBoxLayout(self.working_confirm_layout_widget)
-        confirm_layout.setContentsMargins(10, 5, 10, 5) # Add some margins
+        confirm_layout.setContentsMargins(10, 5, 10, 5)
 
         confirm_label = QLabel("<b>Confirm Working Area?</b>")
         confirm_button_yes = QPushButton("✅ Yes")
@@ -1241,38 +1277,71 @@ class MainWindow(QMainWindow):
         confirm_button_yes.clicked.connect(accept_action)
         confirm_button_no.clicked.connect(reject_action)
 
-        # --- Add Controls to GUI ---
-        # Add the confirmation widget below the video label
-        # Assuming working_video_label's parent layout is a QVBoxLayout
+        # --- Add NEW Controls to GUI ---
+        # Determine parent layout dynamically EACH time
         parent_layout = self.working_video_label.parentWidget().layout()
+        widget_added = False
         if isinstance(parent_layout, QVBoxLayout):
-             # Insert widget at index 1 (below the video label at index 0, assuming simple layout)
-             # A more robust way might involve finding the video label index first.
-             # Find index of video label widget
              index = -1
              for i in range(parent_layout.count()):
                  item = parent_layout.itemAt(i)
-                 if item.widget() == self.working_video_label:
+                 if item and item.widget() == self.working_video_label:
                       index = i
                       break
              if index != -1:
+                 # Add the NEW widget
                  parent_layout.insertWidget(index + 1, self.working_confirm_layout_widget)
-             else: # Fallback: add at the end
+                 widget_added = True
+                 logging.debug(f"Inserted new widget at index {index+1} in {parent_layout}")
+             else:
+                 logging.warning("Could not find working_video_label index, adding confirmation widget at the end.")
                  parent_layout.addWidget(self.working_confirm_layout_widget)
+                 widget_added = True
+                 logging.debug(f"Added new widget at the end of {parent_layout}")
+
+             # Make the new widget visible (it might be hidden by default sometimes)
+             self.working_confirm_layout_widget.show()
+
         else:
-             logging.error("Cannot add confirmation buttons: Parent layout not as expected.")
+             logging.error("Cannot add confirmation buttons: Parent layout not a QVBoxLayout or not found.")
 
 
         # --- Wait for User Response ---
-        logging.info("Waiting for user confirmation of working area...")
-        loop.exec_() # Blocks here until loop.quit() is called
+        if widget_added:
+            logging.info("Waiting for user confirmation of working area...")
+            loop.exec_()
+        else:
+            logging.error("Confirmation widget could not be added to layout. Aborting confirmation.")
+            self._confirmation_result = False
+            # Clean up the widget we just created but couldn't add
+            if self.working_confirm_layout_widget:
+                self.working_confirm_layout_widget.deleteLater()
+                self.working_confirm_layout_widget = None
 
-        # --- Clean Up ---
-        self.working_confirm_layout_widget.deleteLater()
-        del self.working_confirm_layout_widget # Remove reference
+
+        # --- Clean Up CURRENT Widget (after user response) ---
+        # We repeat the forceful removal logic for the widget we just handled
+        if hasattr(self, 'working_confirm_layout_widget') and self.working_confirm_layout_widget is not None:
+            logging.debug("Cleaning up CURRENT confirmation widget after user response.")
+            try:
+                current_widget = self.working_confirm_layout_widget
+                if current_widget:
+                    current_widget.hide()
+                    parent = current_widget.parentWidget()
+                    if parent and parent.layout():
+                        parent.layout().removeWidget(current_widget)
+                    current_widget.deleteLater()
+                self.working_confirm_layout_widget = None
+                logging.debug("Cleared reference to current widget after cleanup.")
+            except RuntimeError as e_runtime_end:
+                 logging.error(f"RuntimeError cleaning up current widget: {e_runtime_end}")
+                 self.working_confirm_layout_widget = None
+            except Exception as e_cleanup_end:
+                 logging.error(f"Error cleaning up current confirmation widget: {e_cleanup_end}")
+                 self.working_confirm_layout_widget = None
+        # --- End of Cleanup ---
 
         return self._confirmation_result
-
 
     def prepare_working_area(self, frame_to_process):
         """

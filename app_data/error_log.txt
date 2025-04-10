@@ -273,3 +273,563 @@ Video file not found:
 2025-04-09 23:01:17,896 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
 2025-04-09 23:01:17,896 [INFO ] [MainThread] Cleanup finished. Application will close now.
 2025-04-09 23:01:17,910 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-10 14:41:40,361 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-10 14:41:40,403 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 14:41:40,808 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-10 14:42:02,124 [INFO ] [MainThread] Selected working video path: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 14:42:10,018 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 14:42:10,018 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 14:42:10,153 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:09,615 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-10 14:44:09,625 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 14:44:09,805 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-10 14:44:23,106 [INFO ] [MainThread] Selected working video path: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 14:44:25,640 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 14:44:25,641 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 14:44:25,744 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,612 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-10 14:44:28,612 [INFO ] [MainThread] Working mode is not running.
+2025-04-10 14:44:28,612 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-10 14:44:28,613 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-10 14:44:28,613 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 14:44:28,614 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-10 14:44:28,635 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,645 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,651 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,658 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,665 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,671 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,678 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,684 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,691 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,698 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,705 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,712 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,719 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,726 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,732 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,742 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,750 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,760 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,768 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,776 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,784 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,796 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,805 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,813 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,820 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,827 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,833 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,840 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,847 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,853 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,860 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,867 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,873 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,880 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,886 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,893 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,899 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,906 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:44:28,907 [WARNI] [MainThread] Working area detection failed or was rejected by user.
+2025-04-10 14:44:28,907 [WARNI] [MainThread] Working area confirmation failed or was cancelled.
+2025-04-10 14:44:28,923 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-10 14:47:37,277 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-10 14:47:37,287 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 14:47:37,470 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-10 14:47:53,090 [INFO ] [MainThread] Selected working video path: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 14:47:59,041 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 14:47:59,041 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 14:47:59,149 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,000 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-10 14:49:17,000 [INFO ] [MainThread] Working mode is not running.
+2025-04-10 14:49:17,000 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-10 14:49:17,000 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-10 14:49:17,001 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 14:49:17,001 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-10 14:49:17,022 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,033 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,041 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,051 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,060 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,069 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,078 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,087 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,095 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,103 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,113 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,121 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,130 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,139 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,149 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,158 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,167 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,175 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,184 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,193 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,201 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,210 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,219 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,228 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,236 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,245 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,253 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,262 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,270 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,279 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,288 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,296 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,305 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,314 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,323 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,332 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,341 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,350 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:49:17,352 [WARNI] [MainThread] Working area detection failed or was rejected by user.
+2025-04-10 14:49:17,352 [WARNI] [MainThread] Working area confirmation failed or was cancelled.
+2025-04-10 14:49:17,367 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-10 14:49:23,775 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-10 14:49:23,786 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 14:49:23,967 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-10 14:49:40,399 [INFO ] [MainThread] Selected working video path: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 14:49:42,145 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 14:49:42,146 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 14:49:42,258 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:50:12,730 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:12,737 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:50:14,988 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:16,151 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:17,175 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:18,164 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:19,135 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:19,801 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:20,080 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:20,273 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:20,474 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:20,666 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:20,842 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:21,016 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:21,183 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:21,358 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:21,533 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:21,699 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:21,865 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:22,031 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:22,216 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:22,381 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:22,565 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:22,740 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:22,915 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:23,082 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:23,247 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:23,405 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:23,571 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:23,737 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:23,905 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:24,061 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:24,228 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:24,403 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:24,579 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:24,743 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:24,928 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:25,094 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:25,252 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:25,427 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:25,593 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:25,741 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:25,907 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:26,065 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:26,214 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:26,372 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:26,520 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:26,652 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:26,817 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:26,976 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:30,431 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:30,825 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:31,192 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:31,595 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:31,954 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:32,313 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:32,662 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:32,960 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:35,200 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:35,795 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:36,137 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:36,531 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:36,950 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:37,327 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:37,598 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:37,765 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:37,930 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:38,106 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:38,271 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:38,420 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:38,587 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:38,744 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:38,902 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:39,077 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:39,225 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:39,383 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:39,532 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:39,680 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:39,847 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:39,995 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:40,144 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:40,293 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:40,451 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:40,599 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:40,757 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:40,923 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:53,444 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:54,223 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:54,415 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:54,590 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:54,774 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:54,958 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:50:56,305 [INFO ] [MainThread] Working mode is not running.
+2025-04-10 14:50:57,562 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 14:50:57,562 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 14:50:57,654 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:05,240 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:09,010 [INFO ] [MainThread] Working mode is not running.
+2025-04-10 14:51:12,174 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 14:51:12,175 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 14:51:12,297 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:28,462 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:29,381 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:32,347 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:32,557 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:32,768 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:32,995 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:33,188 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:33,397 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:33,590 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:33,800 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:34,010 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:34,203 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:34,413 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:34,614 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:34,788 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:34,981 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:35,192 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:35,392 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:35,602 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:35,803 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:36,005 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:36,197 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:36,382 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:36,565 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:36,723 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:36,880 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:37,064 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:37,860 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:38,481 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:39,024 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:39,031 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:40,117 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:40,125 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:40,957 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:40,965 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:41,665 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:41,674 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:42,462 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:42,469 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:42,943 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:42,951 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:43,573 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:43,581 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:44,064 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:44,072 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:44,501 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 14:51:44,510 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 14:51:49,323 [INFO ] [MainThread] User accepted the working area.
+2025-04-10 14:51:49,325 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-10 14:51:49,325 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-10 14:51:49,326 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-10 14:51:49,327 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-10 14:51:49,327 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-10 14:51:49,329 [ERROR] [MainThread] Exception during working area detection: 'MainWindow' object has no attribute 'working_confirm_layout_widget'
+Traceback (most recent call last):
+  File "C:\Users\Stas\Desktop\Pill_project_workspace\src\main.py", line 1290, in prepare_working_area
+    result = self.working_area_processor.objectDetection(frame_to_process)
+  File "C:\Users\Stas\Desktop\Pill_project_workspace\src\ultimate.py", line 80, in objectDetection
+    user_confirmed = self.confirmation_callback(workArea_fr) if self.confirmation_callback else True
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Stas\Desktop\Pill_project_workspace\src\main.py", line 1271, in confirm_working_area
+    self.working_confirm_layout_widget.deleteLater()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MainWindow' object has no attribute 'working_confirm_layout_widget'. Did you mean: 'working_camera_layout_widget'?
+2025-04-10 14:52:14,357 [WARNI] [MainThread] Working area confirmation failed or was cancelled.
+2025-04-10 14:52:14,375 [ERROR] [MainThread] Exception during working area detection: 'MainWindow' object has no attribute 'working_confirm_layout_widget'
+Traceback (most recent call last):
+  File "C:\Users\Stas\Desktop\Pill_project_workspace\src\main.py", line 1290, in prepare_working_area
+    result = self.working_area_processor.objectDetection(frame_to_process)
+  File "C:\Users\Stas\Desktop\Pill_project_workspace\src\ultimate.py", line 80, in objectDetection
+    user_confirmed = self.confirmation_callback(workArea_fr) if self.confirmation_callback else True
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Stas\Desktop\Pill_project_workspace\src\main.py", line 1271, in confirm_working_area
+    self.working_confirm_layout_widget.deleteLater()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MainWindow' object has no attribute 'working_confirm_layout_widget'. Did you mean: 'working_camera_layout_widget'?
+2025-04-10 14:52:16,798 [WARNI] [MainThread] Working area confirmation failed or was cancelled.
+2025-04-10 14:52:18,620 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-10 14:52:18,620 [INFO ] [MainThread] Working mode stop requested.
+2025-04-10 14:52:18,645 [INFO ] [WorkingModeThread] Working mode thread finished. Video capture released.
+2025-04-10 14:52:18,650 [INFO ] [MainThread] Working thread stopped.
+2025-04-10 14:52:18,650 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-10 14:52:18,650 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-10 14:52:18,651 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 14:52:18,651 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-10 14:52:18,666 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-10 15:03:51,640 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-10 15:03:51,650 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 15:03:51,837 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-10 15:04:02,527 [INFO ] [MainThread] Selected working video path: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 15:04:05,806 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 15:04:05,806 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 15:04:05,902 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:04:08,994 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:09,001 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:04:12,446 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:12,993 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:13,430 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:13,851 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:14,349 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:14,804 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:15,172 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:15,382 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:15,636 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:15,819 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:16,003 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:16,152 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:16,327 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:16,484 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:16,633 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:16,791 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:16,940 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:17,071 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:17,604 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:17,611 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:04:19,407 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:19,415 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:04:21,183 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:21,189 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:04:22,443 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:04:22,449 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:04:25,515 [INFO ] [MainThread] Working mode is not running.
+2025-04-10 15:16:01,136 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-10 15:16:01,136 [INFO ] [MainThread] Working mode is not running.
+2025-04-10 15:16:01,136 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-10 15:16:01,136 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-10 15:16:01,137 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 15:16:01,137 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-10 15:16:01,156 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:01,163 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:01,169 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:01,176 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:01,182 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:01,189 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:01,194 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:01,197 [WARNI] [MainThread] Working area detection failed or was rejected by user.
+2025-04-10 15:16:01,197 [WARNI] [MainThread] Working area confirmation failed or was cancelled.
+2025-04-10 15:16:01,208 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-10 15:16:15,791 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-10 15:16:15,801 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 15:16:15,983 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-10 15:16:21,348 [ERROR] [MainThread] Error initializing video source: Working video file not found: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-10 15:16:36,192 [INFO ] [MainThread] Selected working video path: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 15:16:39,457 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 15:16:39,457 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 15:16:39,559 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:43,259 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:16:43,266 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:44,134 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:16:44,142 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:45,069 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:16:45,077 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:45,875 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:16:45,882 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:46,548 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:16:46,556 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:47,310 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:16:47,317 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:49,673 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:16:49,681 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:50,311 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:16:50,319 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:50,950 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:16:50,958 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:16:57,230 [INFO ] [MainThread] User accepted the working area.
+2025-04-10 15:16:57,232 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-10 15:16:57,232 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-10 15:16:57,233 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-10 15:16:57,233 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-10 15:16:57,234 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-10 15:17:23,761 [INFO ] [WorkingModeThread] Video source ended or read failed.
+2025-04-10 15:17:23,778 [INFO ] [WorkingModeThread] Working mode thread finished. Video capture released.
+2025-04-10 15:17:29,906 [INFO ] [MainThread] Working mode is not running.
+2025-04-10 15:17:31,602 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 15:17:31,602 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 15:17:31,694 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:34,054 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:17:34,060 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:35,025 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:17:35,031 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:35,813 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:17:35,819 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:36,241 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:17:36,249 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:36,739 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:17:36,747 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:37,204 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:17:37,210 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:37,641 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:17:37,650 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:38,096 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:17:38,102 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:38,560 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:17:38,566 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:39,023 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:17:39,031 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:17:45,569 [INFO ] [MainThread] User accepted the working area.
+2025-04-10 15:17:45,571 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-10 15:17:45,572 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-10 15:17:45,572 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-10 15:17:45,573 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-10 15:17:45,573 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-10 15:18:02,771 [INFO ] [MainThread] Working mode stop requested.
+2025-04-10 15:18:02,819 [INFO ] [WorkingModeThread] Working mode thread finished. Video capture released.
+2025-04-10 15:18:02,822 [INFO ] [MainThread] Working thread stopped.
+2025-04-10 15:18:08,677 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-10 15:18:08,678 [INFO ] [MainThread] Working mode is not running.
+2025-04-10 15:18:08,678 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-10 15:18:08,678 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-10 15:18:08,679 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 15:18:08,679 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-10 15:18:08,695 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-10 15:27:32,868 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-10 15:27:32,878 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 15:27:33,075 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-10 15:27:36,873 [ERROR] [MainThread] Error initializing video source: Working video file not found: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-10 15:27:45,554 [INFO ] [MainThread] Selected working video path: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 15:27:47,109 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 15:27:47,109 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 15:27:47,213 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:49,045 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:27:49,052 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:49,841 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:27:49,848 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:50,760 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:27:50,766 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:51,267 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:27:51,274 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:51,993 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:27:52,001 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:52,465 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:27:52,473 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:52,920 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:27:52,928 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:53,384 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:27:53,392 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:53,840 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:27:53,847 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:54,304 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:27:54,313 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:27:56,639 [INFO ] [MainThread] User accepted the working area.
+2025-04-10 15:27:56,641 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-10 15:27:56,642 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-10 15:27:56,642 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-10 15:27:56,643 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-10 15:27:56,643 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-10 15:27:56,648 [ERROR] [WorkingModeThread] Error in working thread loop (Frame 0): ObjectDetector.process_frame() got an unexpected keyword argument 'mask'
+Traceback (most recent call last):
+  File "C:\Users\Stas\Desktop\Pill_project_workspace\src\main.py", line 1006, in thread_func
+    result = self._detector.process_frame(
+        frame, frame_counter, mask=self.working_area_mask, mode="process"
+    )
+TypeError: ObjectDetector.process_frame() got an unexpected keyword argument 'mask'
+2025-04-10 15:27:56,666 [INFO ] [WorkingModeThread] Working mode thread finished. Video capture released.
+2025-04-10 15:31:14,209 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-10 15:31:14,210 [INFO ] [MainThread] Working mode is not running.
+2025-04-10 15:31:14,210 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-10 15:31:14,210 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-10 15:31:14,211 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 15:31:14,211 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-10 15:31:14,221 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
+2025-04-10 15:32:27,223 [INFO ] [MainThread] ================ Application Starting ================
+2025-04-10 15:32:27,233 [INFO ] [MainThread] Loaded detection parameters from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 15:32:27,415 [INFO ] [MainThread] Loaded Modbus settings from C:\Users\Stas\Desktop\Pill_project_workspace\app_data\modbus_config.json
+2025-04-10 15:32:30,004 [ERROR] [MainThread] Error initializing video source: Working video file not found: C:\Users\Stas\Videos\Pillproject\circular_white.mp4
+2025-04-10 15:32:38,622 [INFO ] [MainThread] Selected working video path: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 15:32:40,981 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 15:32:40,981 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 15:32:41,088 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:42,700 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:32:42,707 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:43,356 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:32:43,364 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:43,794 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:32:43,801 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:44,231 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:32:44,239 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:44,704 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:32:44,711 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:45,176 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:32:45,183 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:45,596 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:32:45,604 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:46,051 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:32:46,059 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:46,471 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:32:46,478 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:46,891 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:32:46,900 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:32:48,466 [INFO ] [MainThread] User accepted the working area.
+2025-04-10 15:32:48,468 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-10 15:32:48,469 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-10 15:32:48,469 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-10 15:32:48,470 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-10 15:32:48,470 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-10 15:33:23,184 [INFO ] [MainThread] Working mode stop requested.
+2025-04-10 15:33:23,208 [INFO ] [WorkingModeThread] Working mode thread finished. Video capture released.
+2025-04-10 15:33:23,213 [INFO ] [MainThread] Working thread stopped.
+2025-04-10 15:33:24,882 [INFO ] [MainThread] Using working source: C:/Users/Stas/Videos/Pillproject/white_circle.mp4
+2025-04-10 15:33:24,882 [INFO ] [MainThread] Found calibration data file: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\camera_calibration.npz
+2025-04-10 15:33:24,973 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:33:34,020 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:33:34,028 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:33:35,945 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:33:35,954 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:33:36,348 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:33:36,356 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:33:36,785 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:33:36,794 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:33:37,249 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:33:37,257 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:33:37,721 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:33:37,730 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:33:38,193 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:33:38,202 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:33:38,649 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:33:38,658 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:33:39,095 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:33:39,103 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:33:39,532 [INFO ] [MainThread] User rejected the working area.
+2025-04-10 15:33:39,543 [INFO ] [MainThread] Waiting for user confirmation of working area...
+2025-04-10 15:34:04,837 [INFO ] [MainThread] User accepted the working area.
+2025-04-10 15:34:04,840 [INFO ] [MainThread] Working area detected and confirmed.
+2025-04-10 15:34:04,840 [INFO ] [MainThread] Using identification config: C:\Users\Stas\Desktop\Pill_project_workspace\app_data\identification_params.json
+2025-04-10 15:34:04,841 [INFO ] [MainThread] Object detector initialized successfully.
+2025-04-10 15:34:04,841 [INFO ] [WorkingModeThread] Working mode thread started.
+2025-04-10 15:34:04,842 [INFO ] [MainThread] Working mode thread initiated.
+2025-04-10 15:34:58,608 [INFO ] [MainThread] Working mode stop requested.
+2025-04-10 15:34:58,645 [INFO ] [WorkingModeThread] Working mode thread finished. Video capture released.
+2025-04-10 15:34:58,647 [INFO ] [MainThread] Working thread stopped.
+2025-04-10 15:35:01,233 [INFO ] [MainThread] Shutdown requested. Cleaning up...
+2025-04-10 15:35:01,234 [INFO ] [MainThread] Working mode is not running.
+2025-04-10 15:35:01,234 [WARNI] [MainThread] Calibration is not running, cannot stop.
+2025-04-10 15:35:01,234 [WARNI] [MainThread] Not connected to Modbus.
+2025-04-10 15:35:01,235 [INFO ] [MainThread] Detection parameters saved to C:\Users\Stas\Desktop\Pill_project_workspace\app_data\detection_params.json
+2025-04-10 15:35:01,235 [INFO ] [MainThread] Cleanup finished. Application will close now.
+2025-04-10 15:35:01,249 [INFO ] [MainThread] ================ Application Exited (Code: 0) ================
