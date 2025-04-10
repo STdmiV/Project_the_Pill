@@ -1,7 +1,7 @@
 {
-    "BLUR_KERNEL": 3,
+    "BLUR_KERNEL": 1,
     "CANNY_LOW": 110,
-    "CANNY_HIGH": 224,
-    "MIN_AREA": 1050,
+    "CANNY_HIGH": 255,
+    "MIN_AREA": 500,
     "MAX_AREA": 100000
 }
