@@ -1,166 +1,51 @@
 {
-    "rhombus_white": {
-        "parameters": {
-            "aspect_ratio": {
-                "min": 0.7156712526668292,
-                "max": 1.397154117712458
+    "categories": {
+        "Circle_White": {
+            "parameters": {
+                "aspect_ratio": {
+                    "min": 0.953,
+                    "max": 1.05
+                },
+                "circularity": {
+                    "min": 0.8704999999999999,
+                    "max": 0.9247
+                },
+                "extent": {
+                    "min": 0.7216,
+                    "max": 0.7792
+                },
+                "hu_norm": {
+                    "min": 0.15931,
+                    "max": 0.16
+                },
+                "convexity_defects_count": {
+                    "min": 9.0,
+                    "max": 15.0
+                },
+                "avg_color_r": {
+                    "min": 229.29999999999993,
+                    "max": 237.99999999999994
+                },
+                "avg_color_g": {
+                    "min": 220.2,
+                    "max": 231.99999999999994
+                },
+                "avg_color_b": {
+                    "min": 231.79999999999995,
+                    "max": 242.39999999999992
+                }
             },
-            "area": {
-                "min": 572.1537833371236,
-                "max": 695.2702117271838
-            },
-            "perimeter": {
-                "min": 85.38057768583298,
-                "max": 92.08326005935668
-            },
-            "extent": {
-                "min": 0.7485841142800137,
-                "max": 0.8144119261431627
-            },
-            "hu_moments_norm": {
-                "min": 0.16887355611572738,
-                "max": 0.17800527627073356
-            },
-            "circularity": {
-                "min": 0.7470869353485594,
-                "max": 0.8260402089308678
-            },
-            "convexity_defects_count": {
-                "min": 5.04,
-                "max": 11.04
-            },
-            "avg_defect_depth": {
-                "min": 126.0,
-                "max": 198.11714285714288
-            },
-            "avg_color_val": {
-                "min": 226.44,
-                "max": 246.33333333333334
-            }
-        },
-        "color": "#ffffff"
+            "color": "#ffffff"
+        }
     },
-    "circular_white": {
-        "parameters": {
-            "aspect_ratio": {
-                "min": 0.8975490221745718,
-                "max": 1.0860675422797952
-            },
-            "area": {
-                "min": 578.8800108177227,
-                "max": 682.5600184537622
-            },
-            "perimeter": {
-                "min": 80.04151165485382,
-                "max": 88.64817243814468
-            },
-            "extent": {
-                "min": 0.7930447663150869,
-                "max": 0.829115372027704
-            },
-            "hu_moments_norm": {
-                "min": 0.1593450761775613,
-                "max": 0.16091906256895008
-            },
-            "circularity": {
-                "min": 0.8745794591505074,
-                "max": 0.93056787259047
-            },
-            "convexity_defects_count": {
-                "min": 8.04,
-                "max": 15.0
-            },
-            "avg_defect_depth": {
-                "min": 114.0,
-                "max": 153.28
-            },
-            "avg_color_val": {
-                "min": 233.6,
-                "max": 245.0
-            }
-        },
-        "color": "#ffffff"
-    },
-    "circular_pink": {
-        "parameters": {
-            "aspect_ratio": {
-                "min": 0.8648647899918648,
-                "max": 1.1227818010269233
-            },
-            "area": {
-                "min": 545.219910264845,
-                "max": 626.7599448901333
-            },
-            "perimeter": {
-                "min": 77.41804999828338,
-                "max": 85.30502609252929
-            },
-            "extent": {
-                "min": 0.782544681978093,
-                "max": 0.8430865490154196
-            },
-            "hu_moments_norm": {
-                "min": 0.1593282510473718,
-                "max": 0.16322164610763562
-            },
-            "circularity": {
-                "min": 0.873103210595332,
-                "max": 0.93540195567302
-            },
-            "convexity_defects_count": {
-                "min": 7.0,
-                "max": 12.04
-            },
-            "avg_defect_depth": {
-                "min": 125.77857142857142,
-                "max": 149.3357142857143
-            },
-            "avg_color_val": {
-                "min": 156.27333333333334,
-                "max": 233.47333333333336
-            }
-        },
-        "color": "#000000"
-    },
-    "circular_black": {
-        "parameters": {
-            "aspect_ratio": {
-                "min": 0.8944263123481713,
-                "max": 1.0737275326486149
-            },
-            "area": {
-                "min": 629.5862049033985,
-                "max": 741.481033596913
-            },
-            "perimeter": {
-                "min": 80.05538020372391,
-                "max": 267.7022817051411
-            },
-            "extent": {
-                "min": 0.6812246830062061,
-                "max": 0.8213484501988401
-            },
-            "hu_moments_norm": {
-                "min": 0.15958387060023882,
-                "max": 0.21031995770944883
-            },
-            "circularity": {
-                "min": 0.8783776189880538,
-                "max": 0.9140316226153824
-            },
-            "convexity_defects_count": {
-                "min": 7.92,
-                "max": 14.94
-            },
-            "avg_defect_depth": {
-                "min": 91.0425,
-                "max": 971.12
-            },
-            "avg_color_val": {
-                "min": 42.92,
-                "max": 85.76
-            }
-        },
-        "color": "#000000"
-    }
+    "features": [
+        "aspect_ratio",
+        "avg_color_b",
+        "avg_color_g",
+        "avg_color_r",
+        "circularity",
+        "convexity_defects_count",
+        "extent",
+        "hu_norm"
+    ]
 }

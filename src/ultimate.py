@@ -18,7 +18,7 @@ def undistort_frame(frame, calibration_file):
             data = np.load(calibration_file)
             cameraMatrix = data['cameraMatrix']
             distCoeffs = data['distCoeffs']
-            print("Calibration data loaded.")
+            #print("Calibration data loaded.")
         except Exception as e:
             print("Error loading calibration data:", e)
             return frame
@@ -81,7 +81,7 @@ class WorkingArea:
                 if user_confirmed:
                     working_mask = np.zeros(corrected_frame.shape[:2], dtype="uint8")
                     cv2.drawContours(working_mask, [box], 0, 255, -1)
-                    conversion_factor = 210.0 / short_side
+                    conversion_factor = var.REFERENCE_OBJECT_WIDTH_MM / short_side
                     self.detection_params["CONVERSION_FACTOR"] = conversion_factor
                     print("[DEBUG] ✅ Returning confirmed working area")
                     return workArea_fr, working_mask, conversion_factor
@@ -89,22 +89,6 @@ class WorkingArea:
                     print("[DEBUG] User rejected candidate; trying next...")
         print("No candidate working area found within area constraints.")
         return None
-
-# ultimate.py
-import cv2
-import numpy as np
-import random
-import math
-import pandas as pd
-import json
-import os
-from scipy.optimize import linear_sum_assignment
-# Removed QMessageBox import as it's not used here
-import variables as var
-# Assuming undistort_frame is defined elsewhere in this file or imported correctly
-# from .utils import undistort_frame # Example if it's in a utils submodule
-
-# ... (WorkingArea class remains the same) ...
 
 class ObjectDetector:
     def __init__(self, identification_config_path=None, detection_params=None, confirmation_callback=None, parent=None):
@@ -265,16 +249,21 @@ class ObjectDetector:
                 aspect_ratio = width_px / height_px if height_px != 0 else 0
 
                 # Prepare features for recognition
+
                 features_for_recognition = {
+                    # Shape Ratios & Properties
                     "aspect_ratio": aspect_ratio,
-                    "area": features["area"], # Use pixel area for consistency with training? Or mm area? Decide. Let's use Pixels for now.
-                    "perimeter": features["perimeter"],
-                    "extent": features["extent"],
-                    "hu_moments_norm": hu_norm,
                     "circularity": features["circularity"],
+                    "extent": features["extent"],
+                    # Moment Invariants
+                    "hu_norm": hu_norm,
+                    # Shape Complexity
                     "convexity_defects_count": features["convexity_defects_count"],
-                    "avg_defect_depth": features["avg_defect_depth"], # Pixel depth
-                    "avg_color_val": avg_color_val
+                    # Color (assuming consistent lighting)
+                    "avg_color_r": avg_color[2], # Index 2 for Red in BGR
+                    "avg_color_g": avg_color[1], # Index 1 for Green
+                    "avg_color_b": avg_color[0]  # Index 0 for Blue
+                    # --- MM features are NOT included here ---
                 }
 
                 # Recognize object category
@@ -534,53 +523,108 @@ class ObjectDetector:
         # print("[DEBUG] No category matched.")
         return None # No category matched
 
-    def compute_shape_features(self, contour, rect):
+
+
+    def compute_shape_features(self, contour, rect): # Ensure signature includes rect
         """Computes various shape features for a given contour."""
         features = {
             "area": 0.0, "perimeter": 0.0, "extent": 0.0, "hu_moments": [0.0]*7,
             "circularity": 0.0, "convexity_defects_count": 0, "avg_defect_depth": 0.0
         }
+        # Initialize defect features to default
+        features["convexity_defects_count"] = 0
+        features["avg_defect_depth"] = 0.0
+
         try:
             area = cv2.contourArea(contour)
             perimeter = cv2.arcLength(contour, True)
+
+            if area <= 1e-6:
+                return features
+
             features["area"] = area
             features["perimeter"] = perimeter
 
-            if perimeter > 0:
+            if perimeter > 1e-6:
                 features["circularity"] = (4 * math.pi * area / (perimeter ** 2))
 
-            x, y, w, h = cv2.boundingRect(contour)
-            if w > 0 and h > 0:
-                features["extent"] = area / (w * h)
+            _, _, w, h = cv2.boundingRect(contour)
+            bounding_box_area = w * h
+            if bounding_box_area > 1e-6:
+                features["extent"] = area / bounding_box_area
 
             moments = cv2.moments(contour)
-            features["hu_moments"] = cv2.HuMoments(moments).flatten().tolist()
+            if abs(moments['m00']) > 1e-6:
+                hu_moments = cv2.HuMoments(moments).flatten()
+                features["hu_moments"] = hu_moments.tolist()
 
-            # Convexity Defects (handle potential errors)
-            if len(contour) > 3: # Need at least 4 points for defects
+            # --- Convexity Defects ---
+            # Check contour length BEFORE attempting hull calculation
+            if len(contour) <= 3:
+                # print("[DEBUG] Skipping defects: Contour length <= 3")
+                return features
+
+            try:
                 hull_indices = cv2.convexHull(contour, returnPoints=False)
-                if hull_indices is not None and len(hull_indices) > 3:
-                    # Check if hull is different from contour (prevents errors on convex shapes)
-                    # This check might be overly simple. A better check compares hull points to contour points.
-                    # For now, proceed cautiously.
-                     try:
-                          defects = cv2.convexityDefects(contour, hull_indices)
-                          if defects is not None:
-                              valid_defect_depths = [d[0][3] / 256.0 for d in defects if d[0][3] > 0] # Depth is 4th value, scaled by 256
-                              features["convexity_defects_count"] = len(valid_defect_depths)
-                              if valid_defect_depths:
-                                   features["avg_defect_depth"] = np.mean(valid_defect_depths)
-                     except cv2.error as e_cvx:
-                           # Sometimes happens with degenerate contours or hulls
-                           # print(f"[DEBUG] cv2 error calculating convexity defects: {e_cvx}")
-                           pass # Keep default defect values (0)
 
-        except Exception as e:
-            print(f"[ERROR] Failed calculating shape features: {e}")
-            # Return dictionary with default values
+                # --- Refined Validation BEFORE calling convexityDefects ---
+                can_calculate_defects = False # Flag to control execution
+                if hull_indices is not None and isinstance(hull_indices, np.ndarray) and len(hull_indices) >= 3:
+                    # Ensure dtype is int32 right after calculation
+                    if hull_indices.dtype != np.int32:
+                        try:
+                            hull_indices = hull_indices.astype(np.int32)
+                        except Exception as e_astype:
+                            print(f"[ERROR] Failed to cast hull_indices to int32: {e_astype}")
+                            hull_indices = None # Mark as invalid if cast fails
+
+                    # Proceed only if hull_indices are still valid
+                    if hull_indices is not None:
+                        # Check monotonicity explicitly using flatten()
+                        try:
+                            diffs = np.diff(hull_indices.flatten())
+                            is_monotonic = np.all(diffs >= 0) or np.all(diffs <= 0)
+                            if is_monotonic:
+                                # Only if ALL checks pass, set the flag to True
+                                can_calculate_defects = True
+                            else:
+                                print(f"[WARNING] Hull indices NOT monotonic. Skipping convexity defects.")
+                                # Optional: print hull_indices here for debugging if needed
+                                # print(f"    Indices: {hull_indices.flatten()}")
+                        except Exception as e_monotonic_check:
+                            print(f"[ERROR] Error checking monotonicity: {e_monotonic_check}")
+                            # Assume cannot calculate defects if check fails
+                            can_calculate_defects = False
+
+                # --- Call convexityDefects ONLY if validation passed ---
+                if can_calculate_defects:
+                    try:
+                        # print(f"[DEBUG] Attempting cv2.convexityDefects...")
+                        defects = cv2.convexityDefects(contour, hull_indices)
+                        # print("[DEBUG] cv2.convexityDefects call finished.")
+
+                        if defects is not None and len(defects) > 0:
+                            valid_defect_depths = [d[0][3] / 256.0 for d in defects if d[0][3] > 0]
+                            features["convexity_defects_count"] = len(valid_defect_depths)
+                            if valid_defect_depths:
+                                features["avg_defect_depth"] = np.mean(valid_defect_depths)
+
+                    except Exception as e_defects:
+                        # Catch any other potential errors DURING defect calculation
+                        print(f"[ERROR] Unexpected error DURING convexityDefects processing (even after checks): {e_defects}")
+                        # Keep default values (0)
+                        pass
+                # else:
+                    # print("[DEBUG] Skipping convexityDefects call due to validation failure.")
+
+            except cv2.error as e_hull:
+                    print(f"[DEBUG] cv2.error during convexHull calculation: {e_hull}")
+                    pass # Keep defaults if hull fails
+
+        except Exception as e_outer:
+            print(f"[ERROR] Failed calculating basic shape features: {e_outer}")
 
         return features
-
 
     def compute_average_color(self, frame, contour):
         """Computes the average BGR color within a contour area."""

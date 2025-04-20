@@ -1,21 +1,11 @@
-# Okay, let's refactor the main.py file incorporating the new Modbus logic (PLC request flag + multi-object packet sending) and implementing thread-safe GUI updates using signals and slots.
-
-# Key Changes:
-
-# Signals/Slots: Added pyqtSignal and @pyqtSlot for safe GUI updates from the worker thread.
-
-# Modbus Logic in thread_func: Replaced the old sending logic with the new one: check flag, build packet, send packet, reset flag.
-
-# Robustness: Added more error handling (try...except), logging, and checks for prerequisites (calibration, video source).
-
-# Cleanup: Improved thread stopping and resource release.
-
-# Readability: Used variables as var alias, added logging.
-
 # main.py
 
 import sys
 import numpy as np
+import pandas as pd
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import ast
 import cv2
 import os
 import socket # For Modbus TCP connection
@@ -24,19 +14,22 @@ import time # For time management
 import logging # For logging
 import json
 import random
+
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QTabWidget, QHBoxLayout,
     QVBoxLayout, QPushButton, QLabel, QLineEdit, QFormLayout,
-    QComboBox, QFileDialog, QMessageBox, QSizePolicy, QCheckBox, QSlider
+    QComboBox, QFileDialog, QMessageBox, QSizePolicy, QCheckBox, QSlider,
+    QButtonGroup, QScrollArea, QDoubleSpinBox, QColorDialog, QFrame
 )
 # IMPORTANT: Import QtCore elements for signals/slots and event loop
-from PyQt5.QtCore import Qt, QEventLoop, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import Qt, QEventLoop, pyqtSignal, pyqtSlot, QTimer
+from PyQt5.QtGui import QImage, QPixmap, QKeyEvent, QColor 
 from robot_comm import RobotComm  # Robot communication module
 # Assuming calibrate_camera is not directly used, but calib.py has calibrate_camera_gui
 from calib import calibrate_camera_gui
 import variables as var # Use alias for clarity
 from ultimate import WorkingArea, ObjectDetector, undistort_frame # Import undistort_frame if needed elsewhere
+from data_gathering import DataGatheringProcessor
 
 # --- Define category mapping here or ensure it's accessible ---
 # Example: Using the one from variables.py
@@ -54,6 +47,10 @@ class MainWindow(QMainWindow):
     updateWorkingPixmapSignal = pyqtSignal(QPixmap)
     updateCannyPixmapSignal = pyqtSignal(QPixmap)
     updateContourPixmapSignal = pyqtSignal(QPixmap)   
+    updateGatheringPixmapSignal = pyqtSignal(QPixmap)
+    requestClassificationSignal = pyqtSignal(object, QPixmap)
+    enableClassificationSignal = pyqtSignal(bool)
+    updateGatheringStatusSignal = pyqtSignal(str)
     threadStoppedSignal = pyqtSignal()
     
     def __init__(self):
@@ -78,6 +75,17 @@ class MainWindow(QMainWindow):
         self.last_overlay_frame = None # Frame shown during confirmation
         self.display_overlay_search = False # Controlled by user? Add checkbox if needed.
 
+        
+        # --- Data Gathering Variables ---
+        self._gather_thread: threading.Thread | None = None
+        self._gather_stop_flag = False
+        self._gather_processor: DataGatheringProcessor | None = None
+        self._gather_current_shape = "unknown"
+        self._gather_current_color = "unknown"        
+        self._gather_last_shape = "circle"
+        self._gather_last_color = "white"
+        self._gather_classification_active = False
+                
         self.robot: RobotComm | None = None # Type hinting
         self._detector: ObjectDetector | None = None
 
@@ -97,7 +105,20 @@ class MainWindow(QMainWindow):
         )
 
         # --- Build UI ---
+
+
+        
+        # --- Parameter Tuner Variables ---
+        self.tuner_df = None # To store the loaded DataFrame
+        self.tuner_feature_columns = {} # Mapping from feature name to actual column name
+        self.tuner_controls = {} # To store dynamically created spinboxes {feature: {'min_spinbox': QDoubleSpinBox, 'max_spinbox': QDoubleSpinBox}}
+        self.tuner_selected_color = QColor(0, 0, 0) # Default color (black)
+        self.tuner_figure = None # Matplotlib figure
+        self.tuner_canvas = None # Matplotlib canvas
+        self.tuner_ax = None # Matplotlib axes
+
         self._init_ui()
+
         self.load_modbus_settings() # Load Modbus settings on startup
         
         # --- Connect Signals to Slots ---
@@ -107,6 +128,11 @@ class MainWindow(QMainWindow):
         self.calibrationDoneSignal.connect(self.handleCalibrationResult) # Handle calibration result
         self.updateCannyPixmapSignal.connect(self.setCannyPixmap) # Update Canny debug label
         self.updateContourPixmapSignal.connect(self.setContourPixmap) # Update Contour debug label
+        # --- Data Gathering Signals ---
+        self.updateGatheringPixmapSignal.connect(self.setGatheringPixmap)
+        self.requestClassificationSignal.connect(self.handleClassificationRequest)
+        self.enableClassificationSignal.connect(self.handleEnableClassification)
+        self.updateGatheringStatusSignal.connect(self.setGatheringStatus)
 
     def _init_ui(self):
         """Helper method to initialize the user interface."""
@@ -119,11 +145,11 @@ class MainWindow(QMainWindow):
 
         # Tabs
         self.tabs = QTabWidget()
-        self.tabs.addTab(self.create_working_mode_tab(), "Working Mode")
-        self.tabs.addTab(QWidget(), "Data Collection") # Placeholder
-        self.tabs.addTab(QWidget(), "Data Analysis") # Placeholder
-        self.tabs.addTab(self.create_modbus_tab(), "Modbus TCP")
-        self.tabs.addTab(self.create_calibration_tab(), "Calibration")
+        self.tabs.addTab(self.create_working_mode_tab(), "Working Mode") # working mode tab
+        self.tabs.addTab(self.create_data_gathering_tab(), "Data Gathering") #  data gathering tab
+        self.tabs.addTab(self.create_tuner_tab(), "Parameter Tuner") # Parameter tuning tab
+        self.tabs.addTab(self.create_modbus_tab(), "Modbus TCP") # Modbus TCP tab
+        self.tabs.addTab(self.create_calibration_tab(), "Calibration") # Calibration tab
         top_layout.addWidget(self.tabs, stretch=3) # Give more space to tabs
 
         # --- Parameter Controls Panel ---
@@ -140,6 +166,669 @@ class MainWindow(QMainWindow):
     # GUI Creation Methods (create_modbus_tab, create_calibration_tab, etc.)
     # =========================================================================
 
+
+    # Create the Parameter Tuner tab
+    def create_tuner_tab(self):
+        """Creates the Parameter Tuner UI tab."""
+        tab = QWidget()
+        main_layout = QVBoxLayout(tab)
+
+        # --- File Selection ---
+        file_layout = QHBoxLayout()
+        file_layout.addWidget(QLabel("Input CSV:"))
+        self.tuner_csv_path_input = QLineEdit()
+        self.tuner_csv_path_input.setPlaceholderText("Select CSV file with features...")
+        self.tuner_csv_path_input.setReadOnly(True)
+        file_layout.addWidget(self.tuner_csv_path_input)
+        browse_button = QPushButton("Browse...")
+        browse_button.clicked.connect(self.browse_tuner_csv)
+        file_layout.addWidget(browse_button)
+        load_button = QPushButton("Load Data")
+        load_button.clicked.connect(self.load_tuner_data)
+        file_layout.addWidget(load_button)
+        main_layout.addLayout(file_layout)
+
+        # --- Feature Selection for Histogram ---
+        hist_layout = QHBoxLayout()
+        hist_layout.addWidget(QLabel("Show Histogram for:"))
+        self.tuner_feature_selector = QComboBox()
+        self.tuner_feature_selector.setEnabled(False) # Disable until data loaded
+        # Connect signal *after* data loading potentially, or handle empty initial state
+        self.tuner_feature_selector.currentIndexChanged.connect(self.update_tuner_histogram)
+        hist_layout.addWidget(self.tuner_feature_selector)
+        hist_layout.addStretch()
+        main_layout.addLayout(hist_layout)
+
+        # --- Plot Area ---
+        plot_widget = QWidget()
+        plot_layout = QVBoxLayout(plot_widget)
+        # Create Matplotlib figure and canvas
+        self.tuner_figure = Figure(figsize=(5, 3)) # Adjust size as needed
+        self.tuner_canvas = FigureCanvas(self.tuner_figure)
+        self.tuner_ax = self.tuner_figure.add_subplot(111)
+        self.tuner_ax.set_title("Feature Distribution")
+        self.tuner_ax.set_xlabel("Value")
+        self.tuner_ax.set_ylabel("Frequency")
+        plot_layout.addWidget(self.tuner_canvas)
+        main_layout.addWidget(plot_widget)
+
+        # --- Parameter Controls Area (Scrollable) ---
+        controls_group = QFrame() # Use QFrame for potential styling/border
+        controls_group_layout = QVBoxLayout(controls_group)
+        controls_group_layout.addWidget(QLabel("Adjust Feature Ranges:"))
+
+        self.tuner_scroll_area = QScrollArea()
+        self.tuner_scroll_area.setWidgetResizable(True) # Important!
+        self.tuner_controls_widget = QWidget() # Inner widget for the layout
+        self.tuner_controls_layout = QFormLayout(self.tuner_controls_widget) # Form layout for Feature: [Min] [Max]
+        self.tuner_controls_layout.setContentsMargins(5, 5, 5, 5)
+        self.tuner_controls_layout.setSpacing(10)
+        # self.tuner_controls_widget.setLayout(self.tuner_controls_layout) # Layout is set on creation
+        self.tuner_scroll_area.setWidget(self.tuner_controls_widget) # Put inner widget into scroll area
+
+        controls_group_layout.addWidget(self.tuner_scroll_area) # Add scroll area to the group
+        main_layout.addWidget(controls_group) # Add the group to the main layout
+
+        # --- Form Name and Color ---
+        form_layout = QHBoxLayout()
+        form_layout.addWidget(QLabel("Category Name:"))
+        self.tuner_form_name_input = QLineEdit("Default_Category") # Default name
+        form_layout.addWidget(self.tuner_form_name_input)
+        color_button = QPushButton("Choose Color")
+        color_button.clicked.connect(self.choose_tuner_color)
+        form_layout.addWidget(color_button)
+        self.tuner_color_preview = QLabel(" ") # Label to show color
+        self.tuner_color_preview.setFixedWidth(30)
+        self.tuner_color_preview.setAutoFillBackground(True)
+        self._update_color_preview() # Set initial color preview
+        form_layout.addWidget(self.tuner_color_preview)
+        main_layout.addLayout(form_layout)
+
+        # --- Save Button ---
+        save_button = QPushButton("Save Identification Parameters")
+        save_button.clicked.connect(self.save_tuner_parameters)
+        save_button.setEnabled(False) # Disable until data loaded
+        self.tuner_save_button = save_button # Keep reference if needed
+        main_layout.addWidget(save_button, alignment=Qt.AlignCenter)
+
+        # --- Status Label ---
+        self.tuner_status_label = QLabel("Status: Load a CSV file to begin.")
+        self.tuner_status_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.tuner_status_label)
+
+        main_layout.addStretch() # Push elements towards the top
+        return tab
+
+    # Helper method to update color preview label
+    def _update_color_preview(self):
+        """Updates the background color of the tuner_color_preview label."""
+        if hasattr(self, 'tuner_color_preview'):
+            palette = self.tuner_color_preview.palette()
+            palette.setColor(self.tuner_color_preview.backgroundRole(), self.tuner_selected_color)
+            self.tuner_color_preview.setPalette(palette)
+
+        # --- Create Data Gathering Tab ---
+     
+    # =========================================================================
+    # File Dialogs and Color Selection
+    # =========================================================================
+
+    def browse_tuner_csv(self):
+        """Opens a file dialog to select the input CSV file for the tuner."""
+        try:
+            # Default to the directory where gathered data is expected
+            start_dir = os.path.join(var.APP_DIR, "gathered_data")
+            if not os.path.isdir(start_dir):
+                start_dir = var.APP_DIR # Fallback if directory doesn't exist
+
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Select Feature CSV File",
+                start_dir, # Use the determined start directory
+                "CSV Files (*.csv);;All Files (*)"
+            )
+            if file_path: # If user selected a file
+                self.tuner_csv_path_input.setText(file_path)
+                self.tuner_status_label.setText(f"Selected: {os.path.basename(file_path)}. Click 'Load Data'.")
+                logging.info(f"Tuner CSV selected: {file_path}")
+        except Exception as e:
+            logging.error(f"Error browsing for tuner CSV: {e}")
+            self.showMessageSignal.emit("File Dialog Error", f"Could not open file browser:\n{e}")
+
+    def choose_tuner_color(self):
+        """Opens a color dialog to choose the category color."""
+        color = QColorDialog.getColor(self.tuner_selected_color, self) # Start with current color
+        if color.isValid():
+            self.tuner_selected_color = color
+            self._update_color_preview() # Update the preview label
+            logging.info(f"Tuner color selected: {self.tuner_selected_color.name()}")
+    
+    def load_tuner_data(self):
+        """Loads data from the selected CSV and prepares the tuner UI."""
+        csv_path = self.tuner_csv_path_input.text()
+        if not csv_path or not os.path.exists(csv_path):
+            self.showMessageSignal.emit("Error", "Please select a valid CSV file first.")
+            self.tuner_status_label.setText("Status: Select a valid CSV.")
+            # Clear previous state if any
+            self.tuner_df = None
+            self.tuner_feature_selector.clear()
+            self.tuner_feature_selector.setEnabled(False)
+            self.tuner_save_button.setEnabled(False)
+            self.setup_tuner_controls() # Clear controls
+            self.update_tuner_histogram() # Clear plot
+            return
+
+        self.tuner_status_label.setText("Status: Loading and processing data...")
+        QApplication.processEvents() # Update GUI immediately
+
+        try:
+            # --- Load Data ---
+            df = pd.read_csv(csv_path)
+            logging.info(f"Loaded data from {csv_path}. Shape: {df.shape}")
+
+            # --- Define Features to Tune (Based on data_gathering.py output) ---
+            # Select the columns you actually want to create sliders/spinboxes for.
+            # These names MUST match columns in the CSV generated by data_gathering.py.
+            features_to_tune = [
+                    # Shape Ratios & Properties
+                    'aspect_ratio',
+                    'circularity',
+                    'extent',
+                    # Moment Invariants
+                    'hu_norm',
+                    # Shape Complexity
+                    'convexity_defects_count',
+                    # Color (assuming consistent lighting)
+                    'avg_color_r',
+                    'avg_color_g',
+                    'avg_color_b'
+            ]
+
+            # --- Validate and Process Columns ---
+            feature_columns = {} # Map: feature_name -> column_name (here they are the same)
+            available_features_in_df = []
+            missing_features = []
+
+            for feature in features_to_tune:
+                if feature in df.columns:
+                    # Convert column to numeric, coercing errors
+                    df[feature] = pd.to_numeric(df[feature], errors='coerce')
+                    # Check if column has any valid data after conversion
+                    if not df[feature].isnull().all():
+                        feature_columns[feature] = feature
+                        available_features_in_df.append(feature)
+                    else:
+                        logging.warning(f"Feature '{feature}' found but contains only invalid/NaN values after numeric conversion.")
+                        missing_features.append(f"{feature} (invalid data)")
+                else:
+                    logging.warning(f"Expected feature column '{feature}' not found in CSV: {csv_path}")
+                    missing_features.append(feature)
+
+            if not available_features_in_df:
+                raise ValueError("No usable feature columns found or processed in the CSV.")
+
+            if missing_features:
+                self.showMessageSignal.emit("Warning", f"Some expected features were missing or invalid in the CSV:\n{', '.join(missing_features)}")
+
+
+            # --- Store processed data and final feature list ---
+            self.tuner_df = df
+            self.tuner_feature_columns = feature_columns # Here, keys and values are the same
+            self.features_for_tuning = available_features_in_df # Use the list of features actually found and valid
+
+            # --- Update UI ---
+            self.tuner_feature_selector.clear()
+            self.tuner_feature_selector.addItems(self.features_for_tuning)
+            self.tuner_feature_selector.setEnabled(True)
+
+            # Populate parameter controls
+            self.setup_tuner_controls() # This will create spinboxes etc.
+
+            # Trigger initial histogram plot (if features available)
+            if self.features_for_tuning:
+                self.update_tuner_histogram()
+            else: # Clear plot if no features ended up being available
+                self.tuner_ax.clear()
+                self.tuner_canvas.draw()
+
+
+            # Enable save button only if features were processed
+            self.tuner_save_button.setEnabled(bool(self.features_for_tuning))
+
+            self.tuner_status_label.setText(f"Status: Data loaded. {len(self.features_for_tuning)} features ready.")
+            logging.info("Tuner data loaded and processed successfully.")
+
+        except FileNotFoundError:
+            logging.error(f"File not found during load: {csv_path}")
+            self.showMessageSignal.emit("Error", f"File not found:\n{csv_path}")
+            self.tuner_status_label.setText("Status: Error loading file.")
+        except (KeyError, ValueError, Exception) as e:
+            logging.error(f"Failed to load or process tuner data: {e}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Failed to load/process data:\n{e}")
+            self.tuner_status_label.setText("Status: Error processing data.")
+            # Reset state
+            self.tuner_df = None
+            self.tuner_feature_selector.clear()
+            self.tuner_feature_selector.setEnabled(False)
+            self.tuner_save_button.setEnabled(False)
+            self.setup_tuner_controls() # Clear controls
+            self.update_tuner_histogram() # Clear plot
+
+    def setup_tuner_controls(self):
+        """Creates or clears the parameter range controls (spin boxes)."""
+        # --- Clear existing controls first ---
+        # Iterate backwards while removing widgets from the layout
+        while self.tuner_controls_layout.count():
+            item = self.tuner_controls_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater() # Schedule for deletion
+
+        self.tuner_controls = {} # Clear the reference dictionary
+
+        if self.tuner_df is None or not self.features_for_tuning:
+            # If no data loaded, just leave the layout empty
+            logging.info("No tuner data or features available, controls cleared.")
+            return
+
+        logging.info(f"Setting up tuner controls for features: {self.features_for_tuning}")
+
+        # --- Create controls for each feature ---
+        for feature_name in self.features_for_tuning:
+            actual_col_name = self.tuner_feature_columns.get(feature_name)
+            if not actual_col_name:
+                logging.warning(f"Could not find actual column name for feature '{feature_name}', skipping control setup.")
+                continue
+
+            # Get data series, drop NaNs for calculations
+            data_series = self.tuner_df[actual_col_name].dropna()
+
+            if data_series.empty:
+                logging.warning(f"No valid data for feature '{feature_name}' ({actual_col_name}), skipping control setup.")
+                continue
+
+            # Calculate min, max, and default range (e.g., 5th/95th percentile)
+            data_min = data_series.min()
+            data_max = data_series.max()
+            # Handle case where min == max
+            if np.isclose(data_min, data_max):
+                default_min = data_min
+                default_max = data_max
+                # Adjust spinbox range slightly if min=max to avoid issues
+                spinbox_min_limit = data_min - 0.1 if data_min != 0 else -0.1
+                spinbox_max_limit = data_max + 0.1 if data_max != 0 else 0.1
+            else:
+                default_min = data_series.quantile(0.05)
+                default_max = data_series.quantile(0.95)
+                spinbox_min_limit = data_min
+                spinbox_max_limit = data_max
+
+            # Determine appropriate decimals and step for spinboxes
+            # Basic heuristic: adjust based on range, could be more sophisticated
+            data_range = abs(data_max - data_min)
+            decimals = 4
+            step = 0.01
+            if data_range > 1000:
+                decimals = 0; step = 10
+            elif data_range > 100:
+                decimals = 1; step = 1
+            elif data_range > 10:
+                decimals = 2; step = 0.1
+            elif data_range < 0.1 and data_range > 0:
+                decimals = 5; step = 0.001
+
+
+            # Create widgets for this feature
+            feature_label = QLabel(f"{feature_name}:")
+            min_spinbox = QDoubleSpinBox()
+            max_spinbox = QDoubleSpinBox()
+
+            # Configure spinboxes
+            for spinbox in [min_spinbox, max_spinbox]:
+                spinbox.setRange(spinbox_min_limit, spinbox_max_limit)
+                spinbox.setDecimals(decimals)
+                spinbox.setSingleStep(step)
+                # Connect valueChanged signal to update histogram
+                spinbox.valueChanged.connect(self.update_tuner_histogram)
+
+            min_spinbox.setValue(default_min)
+            max_spinbox.setValue(default_max)
+
+            # Layout for min/max spinboxes side-by-side
+            hbox = QHBoxLayout()
+            hbox.addWidget(QLabel("Min:"))
+            hbox.addWidget(min_spinbox)
+            hbox.addSpacing(15) # Add some space
+            hbox.addWidget(QLabel("Max:"))
+            hbox.addWidget(max_spinbox)
+
+            # Add the row to the form layout
+            self.tuner_controls_layout.addRow(feature_label, hbox)
+
+            # Store references to the spinboxes
+            self.tuner_controls[feature_name] = {
+                'min_spinbox': min_spinbox,
+                'max_spinbox': max_spinbox
+            }
+
+        # Adjust layout spacing maybe?
+        self.tuner_controls_layout.setSpacing(15)
+        logging.info("Tuner controls setup complete.")
+    
+    def update_tuner_histogram(self):
+        """Updates the Matplotlib histogram based on current selections."""
+        if self.tuner_df is None \
+        or not hasattr(self, 'tuner_feature_selector') \
+        or not hasattr(self, 'tuner_ax') \
+        or not hasattr(self, 'tuner_canvas'):
+            # Don't try to plot if data or plot components aren't ready
+            # logging.debug("Histogram update skipped: Data or plot components not ready.")
+            return
+
+        selected_feature = self.tuner_feature_selector.currentText()
+        if not selected_feature:
+            # logging.debug("Histogram update skipped: No feature selected.")
+            self.tuner_ax.clear() # Clear axes if no feature selected
+            self.tuner_ax.set_title("Select a feature")
+            self.tuner_canvas.draw()
+            return
+
+        actual_col_name = self.tuner_feature_columns.get(selected_feature)
+        if not actual_col_name:
+            logging.error(f"Cannot update histogram: Actual column name not found for '{selected_feature}'.")
+            return
+
+        if actual_col_name not in self.tuner_df.columns:
+            logging.error(f"Cannot update histogram: Column '{actual_col_name}' not in DataFrame.")
+            return
+
+        # Get data series
+        data_series = self.tuner_df[actual_col_name].dropna()
+        if data_series.empty:
+            logging.warning(f"No data to plot for feature '{selected_feature}'.")
+            self.tuner_ax.clear()
+            self.tuner_ax.set_title(f"{selected_feature} (No Data)")
+            self.tuner_canvas.draw()
+            return
+
+        # Get min/max range from spinboxes for this feature
+        lower_bound = -np.inf
+        upper_bound = np.inf
+        if selected_feature in self.tuner_controls:
+            try:
+                lower_bound = self.tuner_controls[selected_feature]['min_spinbox'].value()
+                upper_bound = self.tuner_controls[selected_feature]['max_spinbox'].value()
+            except KeyError:
+                logging.warning(f"Could not find spinboxes for feature '{selected_feature}' in tuner_controls.")
+            except Exception as e:
+                logging.error(f"Error reading spinbox value for {selected_feature}: {e}")
+
+        # --- Plotting ---
+        try:
+            self.tuner_ax.clear() # Clear previous plot
+            self.tuner_ax.hist(data_series, bins=30, color='skyblue', edgecolor='black', label='_nolegend_') # Use label trick
+
+            # Draw vertical lines for the selected range
+            ymin, ymax = self.tuner_ax.get_ylim()
+            self.tuner_ax.vlines(lower_bound, ymin, ymax, colors='red', linestyles='--', label=f'Min: {lower_bound:.2f}')
+            self.tuner_ax.vlines(upper_bound, ymin, ymax, colors='green', linestyles='--', label=f'Max: {upper_bound:.2f}')
+
+            # Set plot titles and labels
+            self.tuner_ax.set_title(f"Distribution for {selected_feature}")
+            self.tuner_ax.set_xlabel("Value")
+            self.tuner_ax.set_ylabel("Frequency")
+            self.tuner_ax.legend()
+            self.tuner_ax.grid(axis='y', alpha=0.75) # Add grid
+
+            # Redraw the canvas
+            self.tuner_canvas.draw()
+            # logging.debug(f"Histogram updated for feature '{selected_feature}'.")
+
+        except Exception as e:
+            logging.error(f"Error updating histogram plot: {e}", exc_info=True)
+            self.tuner_ax.clear()
+            self.tuner_ax.set_title(f"Error plotting {selected_feature}")
+            self.tuner_canvas.draw()
+    
+    def save_tuner_parameters(self):
+        """Saves the currently defined parameter ranges to the identification JSON config."""
+        if not self.tuner_controls or not self.features_for_tuning:
+            self.showMessageSignal.emit("Warning", "No parameters defined. Load data and set ranges first.")
+            return
+
+        category_name = self.tuner_form_name_input.text().strip()
+        if not category_name:
+            self.showMessageSignal.emit("Error", "Please enter a category name.")
+            return
+
+        # Get color as hex string (#RRGGBB)
+        color_hex = self.tuner_selected_color.name() # QColor.name() returns "#rrggbb"
+
+        # Build the parameters dictionary from spinbox values
+        config_params = {}
+        for feature_name in self.features_for_tuning:
+            if feature_name in self.tuner_controls:
+                try:
+                    min_val = self.tuner_controls[feature_name]['min_spinbox'].value()
+                    max_val = self.tuner_controls[feature_name]['max_spinbox'].value()
+                    config_params[feature_name] = {"min": min_val, "max": max_val}
+                except KeyError:
+                    logging.warning(f"Could not find spinbox values for feature '{feature_name}' during save.")
+                except Exception as e:
+                    logging.error(f"Error reading spinbox value for {feature_name} during save: {e}")
+                    self.showMessageSignal.emit("Error", f"Error reading range for '{feature_name}'.")
+                    return # Stop saving if there's an error reading values
+            else:
+                logging.warning(f"Controls for feature '{feature_name}' not found during save.")
+
+
+        # --- JSON File Handling (adapted from input_file_0.py) ---
+        config_filename = var.IDENTIFICATION_CONFIG # Use path from variables.py
+        config_dir = os.path.dirname(config_filename)
+
+        # Ensure the directory exists
+        if not os.path.exists(config_dir):
+            try:
+                os.makedirs(config_dir)
+                logging.info(f"Created directory for identification config: {config_dir}")
+            except OSError as e:
+                logging.error(f"Failed to create directory {config_dir}: {e}")
+                self.showMessageSignal.emit("Error", f"Could not create directory:\n{config_dir}")
+                return
+
+        # Form the entry for the current category
+        # IMPORTANT: The original script saved directly under category name.
+        # The ObjectDetector expects a structure like: {"categories": {...}, "features": [...]}
+        # Let's adopt the ObjectDetector's expected structure.
+        new_category_entry = {
+            "parameters": config_params,
+            "color": color_hex
+        }
+
+        # Load existing configuration if file exists
+        existing_config = {"categories": {}, "features": []} # Default structure
+        try:
+            if os.path.exists(config_filename):
+                with open(config_filename, "r") as f:
+                    # Handle empty or invalid JSON file
+                    try:
+                        loaded_data = json.load(f)
+                        # Basic validation of structure
+                        if isinstance(loaded_data, dict):
+                            existing_config["categories"] = loaded_data.get("categories", {})
+                            existing_config["features"] = loaded_data.get("features", [])
+                            # Make sure categories is a dict and features is a list
+                            if not isinstance(existing_config["categories"], dict):
+                                logging.warning("Loaded 'categories' is not a dict, resetting.")
+                                existing_config["categories"] = {}
+                            if not isinstance(existing_config["features"], list):
+                                logging.warning("Loaded 'features' is not a list, resetting.")
+                                existing_config["features"] = []
+                        else:
+                            logging.warning(f"Existing config file {config_filename} has invalid root structure. Overwriting with default.")
+
+                    except json.JSONDecodeError:
+                        logging.warning(f"Could not decode JSON from {config_filename}. Starting with default structure.")
+
+        except Exception as e_load:
+            logging.error(f"Error loading existing identification config {config_filename}: {e_load}")
+            # Proceed with default structure but notify user? Maybe not critical failure yet.
+
+        # Update or add the new category data
+        existing_config["categories"][category_name] = new_category_entry
+
+        # Update the list of features used (ensure all tuned features are present)
+        # Using a set for efficient adding and uniqueness
+        feature_set = set(existing_config["features"])
+        feature_set.update(self.features_for_tuning)
+        existing_config["features"] = sorted(list(feature_set)) # Keep it sorted
+
+        # Save the updated configuration
+        try:
+            with open(config_filename, "w") as f:
+                json.dump(existing_config, f, indent=4)
+            logging.info(f"Parameters for '{category_name}' successfully saved/updated in {config_filename}")
+            self.tuner_status_label.setText(f"Status: Parameters for '{category_name}' saved.")
+            self.showMessageSignal.emit("Success", f"Parameters for '{category_name}' saved to\n{config_filename}")
+
+        except Exception as e:
+            logging.error(f"Failed to save identification parameters to {config_filename}: {e}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Failed to save parameters:\n{e}")
+            self.tuner_status_label.setText("Status: Error saving parameters.")
+    
+    def create_data_gathering_tab(self):
+        """Creates the Data Gathering UI tab."""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        # --- Source Selection (similar to Working Mode) ---
+        source_row = QHBoxLayout()
+        source_row.addWidget(QLabel("Gathering Source:"))
+        self.gather_source_selector = QComboBox()
+        self.gather_source_selector.addItems(["Working video", "Camera"])
+        # Use a lambda to avoid issues if called before fully initialized
+        self.gather_source_selector.currentIndexChanged.connect(lambda: self.update_gathering_source())
+        source_row.addWidget(self.gather_source_selector)
+        layout.addLayout(source_row)
+
+        # Video path input
+        self.gather_video_layout_widget = QWidget()
+        gather_video_layout = QHBoxLayout(self.gather_video_layout_widget)
+        gather_video_layout.setContentsMargins(0,0,0,0)
+        gather_video_layout.addWidget(QLabel("Video Path:"))
+        # Use a sensible default, maybe var.WORKING_VIDEO_PATH or let user select first
+        default_gather_video = var.WORKING_VIDEO_PATH if os.path.exists(var.WORKING_VIDEO_PATH) else ""
+        self.gather_video_path_input = QLineEdit(default_gather_video)
+        self.gather_video_path_input.setReadOnly(True)
+        self.gather_video_path_input.mousePressEvent = lambda event: self.browse_gather_video()
+        gather_video_layout.addWidget(self.gather_video_path_input)
+        gather_browse_button = QPushButton("...")
+        gather_browse_button.setFixedWidth(30)
+        gather_browse_button.clicked.connect(self.browse_gather_video)
+        gather_video_layout.addWidget(gather_browse_button)
+        layout.addWidget(self.gather_video_layout_widget)
+
+        # Camera index input
+        self.gather_camera_layout_widget = QWidget()
+        gather_camera_layout = QHBoxLayout(self.gather_camera_layout_widget)
+        gather_camera_layout.setContentsMargins(0,0,0,0)
+        gather_camera_layout.addWidget(QLabel("Camera Index:"))
+        self.gather_camera_index_input = QLineEdit(str(var.CAMERA_INDEX))
+        self.gather_camera_index_input.setFixedWidth(50)
+        # Add validator maybe: self.gather_camera_index_input.setValidator(...)
+        gather_camera_layout.addWidget(self.gather_camera_index_input)
+        gather_camera_layout.addStretch()
+        layout.addWidget(self.gather_camera_layout_widget)
+
+        # --- Video Display ---
+        self.gather_video_label = QLabel("Data Gathering feed")
+        self.gather_video_label.setMinimumSize(640, 480) # Adjust size as needed
+        self.gather_video_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.gather_video_label.setAlignment(Qt.AlignCenter)
+        self.gather_video_label.setStyleSheet("background-color: #222; color: white;")
+        layout.addWidget(self.gather_video_label)
+
+        # --- Status Label ---
+        self.gather_status_label = QLabel("Status: Idle")
+        self.gather_status_label.setAlignment(Qt.AlignCenter)
+        # Optional: Make font larger/bolder
+        # self.gather_status_label.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        layout.addWidget(self.gather_status_label)
+
+        # --- Classification Buttons ---
+        button_container = QWidget()
+        button_container_layout = QVBoxLayout(button_container)
+        button_container_layout.setSpacing(5) # Spacing between button rows
+
+        self.shape_buttons = {} # Dictionary to hold shape buttons
+        self.color_buttons = {} # Dictionary to hold color buttons
+        self.action_buttons = {} # Dictionary to hold accept/skip buttons
+
+        # --- Shape Buttons (Row 1) ---
+        shape_layout = QHBoxLayout()
+        self.shape_button_group = QButtonGroup(self) # Group for exclusive selection
+        self.shape_button_group.setExclusive(True)
+        shapes = ["circle", "rhombus", "cylinder"] # Define shapes
+        for shape in shapes:
+            btn = QPushButton(shape.capitalize())
+            btn.setCheckable(True) # Allow button to stay pressed
+            # Use lambda to pass the shape name to the handler
+            btn.clicked.connect(lambda checked, s=shape: self.on_shape_button_click(s))
+            self.shape_buttons[shape] = btn # Store button reference
+            shape_layout.addWidget(btn)
+            self.shape_button_group.addButton(btn) # Add to the exclusive group
+        button_container_layout.addLayout(shape_layout)
+
+        # --- Color Buttons (Row 2) ---
+        color_layout = QHBoxLayout()
+        self.color_button_group = QButtonGroup(self) # Group for exclusive selection
+        self.color_button_group.setExclusive(True)
+        colors = ["white", "pink", "black"] # Define colors
+        for color in colors:
+            btn = QPushButton(color.capitalize())
+            btn.setCheckable(True)
+            # Use lambda to pass the color name to the handler
+            btn.clicked.connect(lambda checked, c=color: self.on_color_button_click(c))
+            self.color_buttons[color] = btn # Store button reference
+            color_layout.addWidget(btn)
+            self.color_button_group.addButton(btn) # Add to the exclusive group
+        button_container_layout.addLayout(color_layout)
+
+        # --- Action Buttons (Row 3) ---
+        action_layout = QHBoxLayout()
+        accept_btn = QPushButton("✅ Accept (Space)")
+        skip_btn = QPushButton("❌ Skip/Unknown (R)")
+        accept_btn.setStyleSheet("background-color: lightgreen; font-weight: bold;")
+        skip_btn.setStyleSheet("background-color: lightcoral; font-weight: bold;")
+        accept_btn.clicked.connect(self.on_accept_button_click, Qt.QueuedConnection) # Use QueuedConnection to ensure it works across threads
+        print(f"--- DEBUG [UI Setup]: Connected accept_btn clicked signal to {self.on_accept_button_click} ---")
+        skip_btn.clicked.connect(self.on_skip_button_click, Qt.QueuedConnection)
+        self.action_buttons['accept'] = accept_btn # Store reference
+        self.action_buttons['skip'] = skip_btn # Store reference
+        action_layout.addWidget(accept_btn)
+        action_layout.addWidget(skip_btn)
+        button_container_layout.addLayout(action_layout)
+
+        layout.addWidget(button_container)
+        # Initialize buttons as disabled using the slot
+        # Do this after creating self.shape_buttons, etc.
+        QTimer.singleShot(0, lambda: self.handleEnableClassification(False))
+
+        # --- Control Buttons (Start/Stop) ---
+        control_row = QHBoxLayout()
+        self.gather_start_button = QPushButton("Start Gathering")
+        self.gather_stop_button = QPushButton("Stop Gathering")
+        self.gather_start_button.clicked.connect(self.start_data_gathering_mode, Qt.QueuedConnection)
+        self.gather_stop_button.clicked.connect(self.stop_data_gathering_mode, Qt.QueuedConnection)
+        self.gather_stop_button.setEnabled(False) # Initially disabled
+        control_row.addWidget(self.gather_start_button)
+        control_row.addWidget(self.gather_stop_button)
+        layout.addLayout(control_row)
+
+        # Call once at the end to set initial visibility based on combobox
+        QTimer.singleShot(0, lambda: self.update_gathering_source())
+        return tab
+    
     def create_modbus_tab(self):
         """Creates the Modbus TCP configuration tab."""
         tab = QWidget()
@@ -393,7 +1082,6 @@ class MainWindow(QMainWindow):
             "CANNY_HIGH": (0, 255, 1, 0),
             "MIN_AREA": (0, 10000, 50, 0), # Adjusted range
             "MAX_AREA": (1000, 100000, 500, 0),
-            "CONVERSION_FACTOR": (0.01, 10.0, 0.01, 4) # Allow manual adjustment? Risky. Read-only?
             # "SCALE" parameter seems less relevant for processing now, consider removing?
         }
 
@@ -606,7 +1294,113 @@ class MainWindow(QMainWindow):
         # Clean up thread reference
         self._calib_thread = None
 
+        # Add these new methods to the MainWindow class
 
+    @pyqtSlot(QPixmap)
+    def setGatheringPixmap(self, pixmap):
+        """Thread-safe slot to update the data gathering video label."""
+        if isinstance(pixmap, QPixmap) and not pixmap.isNull():
+            self.gather_video_label.setPixmap(pixmap)
+        else:
+            logging.warning("[GUI] Received null or invalid QPixmap for gathering label.")
+            # Optionally clear or show a placeholder text
+            # self.gather_video_label.setText("No Feed")
+
+    @pyqtSlot(str)
+    def setGatheringStatus(self, message):
+        """Thread-safe slot to update the status label."""
+        self.gather_status_label.setText(f"Status: {message}")
+
+    @pyqtSlot(object, QPixmap) # Receiving object ID and pixmap
+    def handleClassificationRequest(self, target_track_id, pixmap):
+        """Handles the signal that an object is ready for classification."""
+        # Basic check for valid pixmap
+        if not isinstance(pixmap, QPixmap) or pixmap.isNull():
+            logging.error("[GUI] Invalid pixmap received in handleClassificationRequest")
+            self.setGatheringStatus(f"Error: Bad frame received for ID {target_track_id}")
+            self.handleEnableClassification(False) # Disable buttons if frame is bad
+            return
+
+        logging.debug(f"[GUI] Received classification request for ID: {target_track_id}")
+        self.setGatheringPixmap(pixmap) # Update display with highlighted frame
+        self.handleEnableClassification(True) # Enable classification buttons
+
+        # --- Pre-select default/last used buttons ---
+        try:
+            # Shape pre-selection
+            shape_to_select = self._gather_last_shape
+            shape_button_to_check = self.shape_buttons.get(shape_to_select)
+            if shape_button_to_check:
+                shape_button_to_check.setChecked(True)
+                self._gather_current_shape = shape_to_select # Update current state
+            else: # If last shape invalid or button doesn't exist, clear selection
+                current_checked_shape = self.shape_button_group.checkedButton()
+                if current_checked_shape:
+                    self.shape_button_group.setExclusive(False) # Temporarily disable exclusivity
+                    current_checked_shape.setChecked(False)
+                    self.shape_button_group.setExclusive(True) # Re-enable exclusivity
+                self._gather_current_shape = "unknown" # Reset current state
+
+            # Color pre-selection
+            color_to_select = self._gather_last_color
+            color_button_to_check = self.color_buttons.get(color_to_select)
+            if color_button_to_check:
+                color_button_to_check.setChecked(True)
+                self._gather_current_color = color_to_select # Update current state
+            else: # If last color invalid or button doesn't exist, clear selection
+                current_checked_color = self.color_button_group.checkedButton()
+                if current_checked_color:
+                    self.color_button_group.setExclusive(False)
+                    current_checked_color.setChecked(False)
+                    self.color_button_group.setExclusive(True)
+                self._gather_current_color = "unknown" # Reset current state
+
+        except Exception as e:
+            logging.error(f"Error pre-selecting buttons: {e}")
+            # Reset state in case of error
+            self._gather_current_shape = "unknown"
+            self._gather_current_color = "unknown"
+
+        # Set focus to the video label widget to ensure it captures key presses
+        self.gather_video_label.setFocus()
+
+    @pyqtSlot(bool)
+    def handleEnableClassification(self, enable):
+        """Enables or disables all classification buttons."""
+        print(f"--- DEBUG [Signal Slot]: handleEnableClassification called with enable={enable} ---")
+        logging.debug(f"[GUI] Setting classification buttons enabled: {enable}")
+        # Iterate through all button dictionaries
+        for btn_dict in [self.shape_buttons, self.color_buttons, self.action_buttons]:
+            if isinstance(btn_dict, dict):
+                 for button_key, btn_widget in btn_dict.items():
+                     # Check if the item is actually a QPushButton
+                     if isinstance(btn_widget, QPushButton):
+                          btn_widget.setEnabled(enable)
+                     else:
+                          logging.warning(f"Item '{button_key}' in button dict is not a QPushButton.")
+
+        self._gather_classification_active = enable # Update the state flag
+
+        if not enable:
+            # When disabling, visually clear the check state of shape/color buttons
+            try:
+                current_shape_btn = self.shape_button_group.checkedButton()
+                if current_shape_btn:
+                    self.shape_button_group.setExclusive(False) # Allow unchecking
+                    current_shape_btn.setChecked(False)
+                    self.shape_button_group.setExclusive(True) # Restore exclusivity
+
+                current_color_btn = self.color_button_group.checkedButton()
+                if current_color_btn:
+                    self.color_button_group.setExclusive(False)
+                    current_color_btn.setChecked(False)
+                    self.color_button_group.setExclusive(True)
+            except Exception as e:
+                 logging.error(f"Error clearing button checks on disable: {e}")
+            # Reset internal state when disabling
+            self._gather_current_shape = "unknown"
+            self._gather_current_color = "unknown"
+    
     # =========================================================================
     # Action Handlers (Connect/Disconnect Modbus, Start/Stop Modes)
     # =========================================================================
@@ -1424,9 +2218,409 @@ class MainWindow(QMainWindow):
             logging.error(f"Failed to save detection parameters to {var.PARAMETERS_CONFIG}: {e}")
             self.showMessageSignal.emit("Error", f"Failed to save parameters:\n{e}")
 
+    
+    def on_shape_button_click(self, shape):
+        """Called when a shape button is clicked."""
+        # The QButtonGroup ensures only one is checked
+        self._gather_current_shape = shape
+        logging.debug(f"[GUI] Shape selected: {shape}")
+        # Optionally provide visual feedback or enable Accept button if both selected
+
+    def on_color_button_click(self, color):
+        """Called when a color button is clicked."""
+        # The QButtonGroup ensures only one is checked
+        self._gather_current_color = color
+        logging.debug(f"[GUI] Color selected: {color}")
+        # Optionally provide visual feedback or enable Accept button if both selected
+
+# В MainWindow class
+
+    def on_accept_button_click(self):
+        """Handles the Accept button click or Spacebar press."""
+        print(f"--- DEBUG [Button Click]: on_accept_button_click CALLED ---")
+
+        # Check if classification is active and processor exists
+        print(f"--- DEBUG: Classification active: {self._gather_classification_active}, Processor exists: {self._gather_processor is not None}") # <-- Add this line
+
+        if not self._gather_classification_active or self._gather_processor is None:
+            logging.warning("Accept called but classification is not active or processor missing.")
+            print("--- DEBUG: Accept condition FAILED (active/processor check) ---") # <-- Add this line
+            return
+
+        print(f"--- DEBUG: Current shape: '{self._gather_current_shape}', Current color: '{self._gather_current_color}'") # <-- Add this line
+
+        # Check if both shape and color have been selected
+        if self._gather_current_shape == "unknown" or self._gather_current_color == "unknown":
+            logging.warning("[GUI] Accept clicked but shape or color is 'unknown'.")
+            print("--- DEBUG: Accept condition FAILED (unknown shape/color) ---") # <-- Add this line
+            self.showMessageSignal.emit("Selection Error", "Please select both a Shape and a Color before accepting.")
+            return # Don't proceed
+
+        logging.debug("[GUI] Accept action triggered.")
+        print("--- DEBUG: Calling processor.accept_current_object ---") # <-- Add this line
+        # Store the accepted choices as defaults for the *next* object
+        self._gather_last_shape = self._gather_current_shape
+        self._gather_last_color = self._gather_current_color
+
+        # Call the processor's method to handle saving the data
+        try:
+            # Pass the currently selected shape and color from the GUI state
+            self._gather_processor.accept_current_object(
+                self._gather_current_shape,
+                self._gather_current_color
+            )
+            print("--- DEBUG: processor.accept_current_object call SUCCEEDED ---") # <-- Add this line
+        except Exception as e:
+            logging.error(f"Error calling processor.accept_current_object: {e}", exc_info=True)
+            print(f"--- DEBUG: processor.accept_current_object call FAILED: {e} ---") # <-- Add this line
+            self.showMessageSignal.emit("Processing Error", f"Failed to process accept action:\n{e}")
+            self.handleEnableClassification(False)
+            return
+
+        # Disable buttons after successful action, waiting for the next request
+        print("--- DEBUG: Disabling classification buttons after accept ---") # <-- Add this line
+        self.handleEnableClassification(False)
+
+    def on_skip_button_click(self):
+        """Handles the Skip/Unknown button click or R key press."""
+        # Check if classification is active and processor exists
+        if not self._gather_classification_active or self._gather_processor is None:
+            logging.warning("Skip called but classification is not active or processor missing.")
+            return
+
+        logging.debug("[GUI] Skip action triggered.")
+        # Call the processor's method to handle skipping
+        try:
+            self._gather_processor.skip_current_object()
+        except Exception as e:
+             logging.error(f"Error calling processor.skip_current_object: {e}", exc_info=True)
+             self.showMessageSignal.emit("Processing Error", f"Failed to process skip action:\n{e}")
+             # Disable buttons for safety
+             self.handleEnableClassification(False)
+             return # Stop processing this action
+
+        # Disable buttons after successful action, waiting for the next request
+        self.handleEnableClassification(False)
+
+    def keyPressEvent(self, event: QKeyEvent):
+            """Handle keyboard shortcuts for classification."""
+            # Find the Data Gathering tab widget instance
+            data_gathering_tab_widget = None
+            for i in range(self.tabs.count()):
+                if self.tabs.tabText(i) == "Data Gathering":
+                    data_gathering_tab_widget = self.tabs.widget(i)
+                    break
+
+            # Check if the current visible tab is the Data Gathering tab AND classification is active
+            if self.tabs.currentWidget() == data_gathering_tab_widget and self._gather_classification_active:
+                key = event.key()
+                logging.debug(f"[GUI] Key pressed: {key}")
+                if key == Qt.Key_Space:
+                    logging.debug("[GUI] Spacebar pressed.")
+                    self.on_accept_button_click()
+                    event.accept() # Consume the event, prevent further processing
+                    return # Stop processing here
+                elif key == Qt.Key_R:
+                    logging.debug("[GUI] 'R' key pressed.")
+                    self.on_skip_button_click()
+                    event.accept() # Consume the event
+                    return # Stop processing here
+                # Add more shortcuts here if needed
+                # elif key == Qt.Key_C: ...
+
+            # If the key wasn't handled by our shortcuts or we are not in the right state/tab,
+            # call the default implementation of the parent class.
+            super().keyPressEvent(event)
+
+
+    def start_data_gathering_mode(self):
+        """Starts the data gathering process, including Working Area definition."""
+        if self._gather_thread is not None and self._gather_thread.is_alive():
+            self.showMessageSignal.emit("Warning", "Data gathering is already running.")
+            return
+
+        logging.info("Attempting to start Data Gathering mode...")
+        self._gather_stop_flag = False
+        self.gather_start_button.setEnabled(False) # Disable start button early
+        # Don't enable stop button yet, wait until WA is confirmed
+        # self.gather_stop_button.setEnabled(True)
+        self.handleEnableClassification(False)
+        self.setGatheringStatus("Initializing...")
+
+        # --- 1. Select Video Source ---
+        source_text = self.gather_source_selector.currentText()
+        is_video_source = (source_text == "Working video")
+
+        cap = None
+        source_name = ""
+        try:
+            if is_video_source:
+                video_path = self.gather_video_path_input.text()
+                if not video_path or not os.path.exists(video_path):
+                     raise FileNotFoundError(f"Gathering video file not found or path empty: '{video_path}'")
+                cap = cv2.VideoCapture(video_path)
+                source_name = video_path
+            else: # Camera source
+                index_str = self.gather_camera_index_input.text()
+                if not index_str.isdigit(): raise ValueError("Invalid camera index: not a number")
+                index = int(index_str)
+                if index < 0: raise ValueError("Invalid camera index: negative")
+                cap = cv2.VideoCapture(index)
+                source_name = f"Camera Index {index}"
+
+            if not cap or not cap.isOpened():
+                raise IOError(f"Failed to open video source: {source_name}")
+            logging.info(f"Using gathering source: {source_name} (Is Video File: {is_video_source})")
+
+        except (FileNotFoundError, ValueError, IOError, Exception) as e:
+            logging.error(f"Error initializing gathering source: {e}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Error initializing video source:\n{e}")
+            if cap: cap.release()
+            # Reset UI state
+            self.gather_start_button.setEnabled(True)
+            # self.gather_stop_button.setEnabled(False) # Already false or not set
+            self.setGatheringStatus(f"Error: {e}")
+            return
+
+        # --- 2. Load Calibration Data ---
+        try:
+            if not os.path.exists(var.CALIBRATION_FILE):
+                 raise FileNotFoundError(f"Calibration file not found: {var.CALIBRATION_FILE}")
+            logging.info(f"Found calibration data file: {var.CALIBRATION_FILE}")
+        except Exception as e:
+            logging.error(f"Calibration file check failed: {e}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Calibration file error:\n{e}\nPlease run calibration.")
+            cap.release()
+            self.gather_start_button.setEnabled(True)
+            # self.gather_stop_button.setEnabled(False)
+            self.setGatheringStatus("Error: Calibration missing")
+            return
+
+        # --- 3. Define and Confirm Working Area ---
+        # This section now includes reading the first frame and calling prepare_working_area
+        self.setGatheringStatus("Detecting Working Area...")
+        QApplication.processEvents() # Update GUI status label immediately
+
+        current_working_area_mask = None # Initialize mask variable
+        try:
+            ret, first_frame = cap.read()
+            if not ret or first_frame is None:
+                raise IOError("Cannot read the first frame for Working Area setup.")
+
+            # Undistort the frame using the calibration data
+            undistorted_first_frame = undistort_frame(first_frame, var.CALIBRATION_FILE)
+            if undistorted_first_frame is first_frame:
+                 logging.warning("Undistortion might have failed, using original frame for Working Area detection.")
+
+            # Call the existing method that handles detection and user confirmation
+            # This method blocks the main thread until the user responds (using QEventLoop)
+            # It sets self.working_area_mask and self.detection_params["CONVERSION_FACTOR"] if successful
+            confirmed = self.prepare_working_area(undistorted_first_frame)
+
+            if not confirmed:
+                # User cancelled, or detection failed
+                logging.warning("Working Area definition/confirmation failed or was cancelled by user.")
+                self.showMessageSignal.emit("Info", "Working Area definition cancelled or failed.")
+                cap.release()
+                self.gather_start_button.setEnabled(True) # Re-enable start
+                # self.gather_stop_button.setEnabled(False) # Should still be false
+                self.setGatheringStatus("Idle - Working Area not set.")
+                return # Stop the start process here
+            else:
+                # Confirmation successful! The mask is stored in self.working_area_mask
+                current_working_area_mask = self.working_area_mask
+                logging.info("Working Area definition confirmed by user.")
+                self.setGatheringStatus("Working Area Confirmed. Initializing Processor...")
+                QApplication.processEvents() # Update status
+
+        except Exception as e_wa:
+             logging.error(f"Error during Working Area setup: {e_wa}", exc_info=True)
+             self.showMessageSignal.emit("Error", f"Working Area setup failed:\n{e_wa}")
+             cap.release()
+             self.gather_start_button.setEnabled(True)
+             # self.gather_stop_button.setEnabled(False)
+             self.setGatheringStatus("Error during WA setup.")
+             return
+        # --- End of Working Area Definition ---
+
+
+        # --- 4. Initialize Data Gathering Processor ---
+        # This part only runs if Working Area was confirmed successfully
+        try:
+            # Define safe callback functions using lambda to emit signals
+            def _safe_request_callback(target_id, frame):
+                if frame is not None:
+                    label_w = self.gather_video_label.width(); label_h = self.gather_video_label.height()
+                    if label_w > 0 and label_h > 0:
+                        pixmap = self.frame_to_qpixmap(frame, label_w, label_h)
+                        if isinstance(pixmap, QPixmap) and not pixmap.isNull():
+                            self.requestClassificationSignal.emit(target_id, pixmap)
+            def _safe_status_callback(msg: str): self.updateGatheringStatusSignal.emit(str(msg))
+
+            self._gather_processor = DataGatheringProcessor(
+                detection_params=self.detection_params, # Use current params (incl. CONVERSION_FACTOR from WA)
+                request_classification_callback=_safe_request_callback,
+                update_status_callback=_safe_status_callback
+            )
+            self._gather_processor.reset_state()
+            logging.info("DataGatheringProcessor initialized successfully.")
+        except Exception as e:
+            logging.error(f"Failed to initialize DataGatheringProcessor: {e}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Failed to initialize Processor:\n{e}")
+            cap.release()
+            self.gather_start_button.setEnabled(True)
+            # self.gather_stop_button.setEnabled(False)
+            self.setGatheringStatus("Error: Processor init failed")
+            return
+
+        # --- 5. Define and Start Worker Thread ---
+        # (Thread function definition remains the same as previous step)
+        def thread_func_gather(video_capture, stop_flag_getter, processor, working_area_mask, is_video):
+            # ... (Worker thread code with looping logic remains IDENTICAL) ...
+            thread_name = threading.current_thread().name
+            logging.info(f"{thread_name}: Thread started. Source is video file: {is_video}")
+            frame_counter = 0
+            last_good_frame = None
+
+            while not stop_flag_getter():
+                ret, frame = video_capture.read()
+                if not ret:
+                    if is_video:
+                        success_reset = video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                        if not success_reset: break
+                        frame_counter = 0
+                        continue
+                    else: break
+                try:
+                    if processor is None: break
+            
+                    overlay_frame = processor.process_frame(frame, frame_counter, working_area_mask=current_working_area_mask)
+                    display_frame = overlay_frame if overlay_frame is not None else last_good_frame
+                    
+                    if display_frame is not None:
+                        if overlay_frame is not None: last_good_frame = display_frame
+                        label_w = self.gather_video_label.width(); label_h = self.gather_video_label.height()
+                        
+                        #if label_w > 0 and label_h > 0:
+                            #pixmap = self.frame_to_qpixmap(display_frame, label_w, label_h)
+                            #if isinstance(pixmap, QPixmap) and not pixmap.isNull(): self.updateGatheringPixmapSignal.emit(pixmap)
+                        if frame_counter % 1 == 0: 
+                            if hasattr(self, 'gather_video_label'):
+                                label_w = self.gather_video_label.width(); label_h = self.gather_video_label.height()
+                                if label_w > 0 and label_h > 0:
+                                    pixmap = self.frame_to_qpixmap(display_frame, label_w, label_h)
+                                    if isinstance(pixmap, QPixmap) and not pixmap.isNull():
+                                        self.updateGatheringPixmapSignal.emit(pixmap)
+                    frame_counter += 1
+                    time.sleep(0.050)
+                except Exception as e_loop:
+                    logging.error(f"{thread_name}: Error in loop (Frame {frame_counter}): {e_loop}", exc_info=True)
+                    _safe_status_callback(f"Runtime Error: {e_loop}")
+                    time.sleep(0.5)
+
+            if video_capture: video_capture.release(); logging.info(f"{thread_name}: Capture released.")
+            logging.info(f"{thread_name}: Thread finished.")
+            QTimer.singleShot(50, lambda: self.gather_start_button.setEnabled(True))
+            QTimer.singleShot(50, lambda: self.gather_stop_button.setEnabled(False))
+            QTimer.singleShot(50, lambda: self.handleEnableClassification(False))
+            QTimer.singleShot(50, lambda: self.setGatheringStatus("Stopped."))
+        # -----------------------------------------------------------------
+
+        # --- Start the Thread ---
+        # Pass the confirmed 'current_working_area_mask' to the thread function
+        self._gather_thread = threading.Thread(
+            target=thread_func_gather,
+            args=(cap, lambda: self._gather_stop_flag, self._gather_processor, current_working_area_mask, is_video_source), # Pass the mask here
+            name="DataGatherThread",
+            daemon=True)
+        self._gather_thread.start()
+
+        # Enable the stop button only after the thread starts successfully
+        self.gather_stop_button.setEnabled(True)
+        logging.info("Data gathering thread initiated.")
+        self.setGatheringStatus("Running...")
+
+
+
+    def stop_data_gathering_mode(self):
+        """Signals the data gathering thread to stop and resets processor state."""
+        # Check if the thread exists and is running
+        if self._gather_thread is None or not self._gather_thread.is_alive():
+            logging.info("Data gathering is not running or thread object missing.")
+            if hasattr(self, 'gather_start_button'): self.gather_start_button.setEnabled(True)
+            if hasattr(self, 'gather_stop_button'): self.gather_stop_button.setEnabled(False)
+            self.handleEnableClassification(False)
+            return
+
+        logging.info("Data gathering stop requested.")
+        self._gather_stop_flag = True # Signal the thread's loop to exit
+
+        # --- NEW: Reset processor state immediately ---
+        if self._gather_processor is not None:
+            # Reset the target ID to stop waiting for classification input
+            self._gather_processor._current_target_track_id = None
+            # Optionally, clear the queue too? Might prevent last-second requests.
+            # self._gather_processor._object_queue.clear()
+            # self._gather_processor._pending_classification_data.clear()
+            # Maybe call the processor's reset method if it's safe in this context?
+            # self._gather_processor.reset_state() # Be careful if reset_state does too much
+            logging.info("Cleared current target ID in processor to allow clean stop.")
+        # --- End of NEW block ---
+
+        # Update GUI immediately
+        self.gather_stop_button.setEnabled(False) # Prevent multiple clicks
+        self.handleEnableClassification(False) # Disable classification during stop
+        self.setGatheringStatus("Stopping...")
+
+
+
     # =========================================================================
     # Utility Methods
     # =========================================================================
+
+
+
+    def update_gathering_source(self):
+        """Shows/hides video/camera controls based on combobox selection."""
+        # Check if widgets exist before accessing them
+        if not hasattr(self, 'gather_source_selector') or \
+           not hasattr(self, 'gather_video_layout_widget') or \
+           not hasattr(self, 'gather_camera_layout_widget'):
+            # logging.debug("Gathering source widgets not ready for update yet.")
+            return # Widgets might not be fully created during __init__
+
+        try:
+            use_video = self.gather_source_selector.currentText() == "Working video"
+            self.gather_video_layout_widget.setVisible(use_video)
+            self.gather_camera_layout_widget.setVisible(not use_video)
+        except Exception as e:
+            logging.error(f"Error updating gathering source visibility: {e}")
+
+
+    def browse_gather_video(self):
+        """Opens a file dialog to select a video for data gathering."""
+        try:
+            current_path = self.gather_video_path_input.text()
+            # Determine starting directory for the dialog
+            if current_path and os.path.exists(os.path.dirname(current_path)):
+                start_dir = os.path.dirname(current_path)
+            elif os.path.exists(var.WORKING_VIDEO_PATH) and os.path.exists(os.path.dirname(var.WORKING_VIDEO_PATH)):
+                 start_dir = os.path.dirname(var.WORKING_VIDEO_PATH)
+            else:
+                start_dir = "" # Default to current working directory
+
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Select Data Gathering Video",
+                start_dir,
+                "Video Files (*.mp4 *.avi *.mov *.mkv *.wmv);;All Files (*)" # Added more formats
+            )
+            if file_path: # If user selected a file
+                self.gather_video_path_input.setText(file_path)
+                logging.info(f"Selected data gathering video: {file_path}")
+        except Exception as e:
+            logging.error(f"Error browsing for gathering video: {e}")
+            self.showMessageSignal.emit("File Dialog Error", f"Could not open file browser:\n{e}")
 
     def frame_to_qpixmap(self, frame: np.ndarray, target_w: int, target_h: int) -> QPixmap:
         """
@@ -1530,21 +2724,37 @@ class MainWindow(QMainWindow):
         logging.info("Shutdown requested. Cleaning up...")
 
         # Stop working thread if running
-        self.stop_working_mode() # Ensures flag is set and waits briefly
+        # Stop working thread if running
+        if hasattr(self, 'stop_working_mode'):
+             self.stop_working_mode() # Ensures flag is set and waits briefly
 
         # Stop calibration thread if running
-        self.stop_calibration() # Sets flag
-        if self._calib_thread is not None and self._calib_thread.is_alive():
-             self._calib_thread.join(timeout=0.5) # Wait briefly
-             if self._calib_thread.is_alive():
-                 logging.warning("Calibration thread did not stop quickly.")
-        self._calib_thread = None
+        if hasattr(self, 'stop_calibration'):
+             self.stop_calibration() # Sets flag
+             if self._calib_thread is not None and self._calib_thread.is_alive():
+                  logging.debug("Waiting up to 0.5s for calibration thread...")
+                  self._calib_thread.join(timeout=0.5) # Wait briefly
+                  if self._calib_thread.is_alive():
+                      logging.warning("Calibration thread did not stop quickly.")
+        self._calib_thread = None # Clear reference
+
+        # --- Stop data gathering thread if running ---
+        if hasattr(self, 'stop_data_gathering_mode'):
+            self.stop_data_gathering_mode() # Sets flag
+            if self._gather_thread is not None and self._gather_thread.is_alive():
+                 logging.debug("Waiting up to 1.0s for data gathering thread...")
+                 self._gather_thread.join(timeout=1.0) # Wait a bit longer
+                 if self._gather_thread.is_alive():
+                     logging.warning("Data gathering thread did not stop quickly.")
+        self._gather_thread = None # Clear reference
 
         # Disconnect from Modbus server
-        self.disconnect_modbus() # Ensures robot instance is cleaned up
+        if hasattr(self, 'disconnect_modbus'):
+             self.disconnect_modbus() # Ensures robot instance is cleaned up
 
         # Save detection parameters
-        self.save_detection_params()
+        if hasattr(self, 'save_detection_params'):
+             self.save_detection_params()
 
         logging.info("Cleanup finished. Application will close now.")
         event.accept() # Allow window to close
@@ -1664,8 +2874,8 @@ if __name__ == '__main__':
     # Configure logging (File and Console)
     log_formatter = logging.Formatter('%(asctime)s [%(levelname)-5.5s] [%(threadName)-10s] %(message)s')
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO) # Set root level (e.g., INFO or DEBUG)
-
+    #root_logger.setLevel(logging.INFO) # Set root level (e.g., INFO or DEBUG)
+    root_logger.setLevel(logging.DEBUG)
     # Clear existing handlers (if re-running in interactive environment)
     #for handler in root_logger.handlers[:]:
     #    root_logger.removeHandler(handler)

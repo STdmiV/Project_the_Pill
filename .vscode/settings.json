@@ -1,5 +1,27 @@
 {
     "python.defaultInterpreterPath": "${workspaceFolder}\\venv\\Scripts\\python.exe",
-    "python.terminal.activateEnvironment": true
+    "python.terminal.activateEnvironment": true,
+    "cSpell.words": [
+      "aruco",
+      "CHARUCO",
+      "Conv",
+      "dtype",
+      "Errno",
+      "ipywidgets",
+      "linestyles",
+      "matplotlib",
+      "nolegend",
+      "numpy",
+      "opencv",
+      "Pillproject",
+      "rrggbb",
+      "scipy",
+      "Spacebar",
+      "spinboxes",
+      "Stas",
+      "vlines",
+      "WARNI",
+      "ylim"
+    ]
   }
   

@@ -31,7 +31,7 @@ CALIBRATION_VIDEO_PATH = r'C:\Users\Stas\Videos\Pillproject\cali.mp4'
 #WORKING_VIDEO_PATH = r"C:\Users\Stas\Videos\Pillproject\rhombus_white.mp4"
 #WORKING_VIDEO_PATH = r"C:\Users\Stas\Videos\Pillproject\circular_black.mp4"
 #WORKING_VIDEO_PATH = r"C:\Users\Stas\Videos\Pillproject\circular_pink.mp4"
-WORKING_VIDEO_PATH = r"C:\Users\Stas\Videos\Pillproject\circular_white.mp4"
+WORKING_VIDEO_PATH = r"C:\Users\Stas\Videos\Pillproject\white_circle.mp4"
 #WORKING_VIDEO_PATH = r"C:\Users\Stas\Videos\Pillproject\All.mp4"
 
 # Camera configuration
@@ -78,6 +78,7 @@ WORKING_AREA_MAX_SIZE_RATIO = 1  # 90% of frame width/height
 # Object Tracking Parameters
 MAX_LOST_FRAMES = 5  # Frames before a track is considered lost
 MAX_DISTANCE = 50  # Maximum pixel distance between frames to track an object
+DATA_GATHERING_REQUEUE_DELAY = 2.0 # Seconds to wait before asking again about a skipped/accepted object ID
 
 # Reference object (for scale calibration, e.g., an A4 paper)
 REFERENCE_OBJECT_WIDTH_MM = 210.0  # Width of A4 in mm
