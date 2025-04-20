@@ -6,3 +6,6 @@ pyModbusTCP
 pandas
 Pillow
 scipy
+matplotlib
+ipywidgets
+IPython
