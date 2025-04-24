@@ -2,14 +2,17 @@
 # It uses the pyModbusTCP library to establish a connection with the robot and send data to it.
 # robot_comm.py
 #pip install pyModbusTCP 
-      
+
+
 import logging # Ensure logging is imported if not already
 from datetime import datetime # Ensure datetime is imported
 from pyModbusTCP.client import ModbusClient
 import os
 
+logger = logging.getLogger(__name__)
+
 class RobotComm:
-    def __init__(self, host="192.168.0.10", port=502, timeout=5, log_file='app_data/error_log.txt'):
+    def __init__(self, host="192.168.0.10", port=502, timeout=5):
         """
         :param host: IP address (str)
         :param port: Modbus TCP port (int, default: 502)
@@ -18,37 +21,32 @@ class RobotComm:
         self.host = host
         self.port = port
         self.timeout = timeout
-        self.log_file = log_file
         self.client = ModbusClient(host=self.host, port=self.port, timeout=self.timeout)
         self.connected = False
 
-        
-        if not os.path.exists(os.path.dirname(self.log_file)):
-            os.makedirs(os.path.dirname(self.log_file))
-        logging.basicConfig(filename=self.log_file,
-                            level=logging.INFO,
-                            format='%(asctime)s - %(levelname)s - %(message)s')
+
 
     def connect(self):
         try:
             self.connected = self.client.open()
             if self.connected:
-                logging.info("Connected.")
-                logging.info(f"Connected to Modbus server at {self.host}:{self.port}")
+                logger.info("Connected.")
+                logger.info(f"Connected to Modbus server at {self.host}:{self.port}")
             else:
-                logging.error("Failed.")
-                logging.error(f"Failed to connect to Modbus server at {self.host}:{self.port}")
+                logger.error("Failed.")
+                logger.error(f"Failed to connect to Modbus server at {self.host}:{self.port}")
         except Exception as e:
             self.connected = False
-            logging.error(f"Connection error: {str(e)}")
-            logging.error(f"Exception during connection: {e}")
+            logger.error(f"Connection error: {str(e)}", exc_info=True)
+            logger.error(f"Exception during connection: {e}", exc_info=True)
 
     def disconnect(self):
         if self.connected:
             self.client.close()
             self.connected = False
-            logging.info("Disconnected")
-            logging.info(f"Disconnected from Modbus server.")
+            logger.info("Disconnected")
+            logger.info(f"Disconnected from Modbus server.")
+            
     def read_request_flag(self, address, is_coil=False):
         """
         Reads a single register or coil to check for a data request flag.
@@ -59,8 +57,8 @@ class RobotComm:
             The value read (e.g., 0 or 1), or None on error.
         """
         if not self.connected:
-            logging.error("Cannot read flag: Not connected.")
-            # print(f"[{datetime.now()}] Not connected. Cannot read flag.") # Keep logging primary
+            logger.error("Cannot read flag: Not connected.")
+            # print(f"[{datetime.now()}] Not connected. Cannot read flag.") # Keep logger primary
             return None
 
         try:
@@ -72,16 +70,16 @@ class RobotComm:
                 result = self.client.read_holding_registers(address, 1)
 
             if result: # Check if result is not None or empty
-                # logging.info(f"Read flag at address {address}: {result[0]}") # Log only on change or request?
+                # logger.info(f"Read flag at address {address}: {result[0]}") # Log only on change or request?
                 return result[0] # Return the first (and only) value
             else:
                 last_ex = self.client.last_exception()
                 last_ex_str = str(last_ex) if last_ex else "Unknown read error"
-                logging.error(f"Failed to read flag at address {address}. Error: {last_ex_str}")
+                logger.error(f"Failed to read flag at address {address}. Error: {last_ex_str}")
                 # print(f"[{datetime.now()}] Failed to read flag at address {address}. Error: {last_ex_str}")
                 return None
         except Exception as e:
-            logging.error(f"Exception during flag reading at address {address}: {str(e)}")
+            logger.error(f"Exception during flag reading at address {address}: {str(e)}", exc_info=True)
             # print(f"[{datetime.now()}] Exception during reading flag: {e}")
             return None
 
@@ -95,7 +93,7 @@ class RobotComm:
             True on success, False on failure.
         """
         if not self.connected:
-            logging.error("Cannot reset flag: Not connected.")
+            logger.error("Cannot reset flag: Not connected.")
             return False
 
         try:
@@ -107,12 +105,12 @@ class RobotComm:
                 success = self.client.write_single_register(address, 0)
 
             if success:
-                logging.info(f"Successfully reset flag at address {address}")
+                logger.info(f"Successfully reset flag at address {address}")
             else:
-                logging.error(f"Failed to reset flag at address {address}")
+                logger.error(f"Failed to reset flag at address {address}")
             return success
         except Exception as e:
-            logging.error(f"Exception during flag reset at address {address}: {str(e)}")
+            logger.error(f"Exception during flag reset at address {address}: {str(e)}", exc_info=True)
             return False
 
 
@@ -131,15 +129,15 @@ def send_data(self, obj_id, x_mm, y_mm, width_mm, height_mm, angle, category_cod
     """
 
     if not self.connected:
-        logging.error("Attempted to send data without connection.")
-        logging.error("Not connected. Cannot send data.")
+        logger.error("Attempted to send data without connection.")
+        logger.error("Not connected. Cannot send data.")
         return False
 
-    logging.info("Attempting to reconnect...")
+    logger.info("Attempting to reconnect...")
     self.connect()
     if not self.connected:
-        logging.error("Reconnection failed. Cannot send data.")
-        logging.error("Reconnection failed. Cannot send data.")
+        logger.error("Reconnection failed. Cannot send data.")
+        logger.error("Reconnection failed. Cannot send data.")
         return False
 
     data = [
@@ -155,13 +153,13 @@ def send_data(self, obj_id, x_mm, y_mm, width_mm, height_mm, angle, category_cod
         # starting from register address 0
         success = self.client.write_registers(0, data)
         if success:
-            logging.info(f"Sent data successfully: {data}")
-            logging.info(f"Data sent: {data}")
+            logger.info(f"Sent data successfully: {data}")
+            logger.info(f"Data sent: {data}")
         else:
-            logging.error("Failed to send.")
-            logging.error(f"Failed to send data: {data}")
+            logger.error("Failed to send.")
+            logger.error(f"Failed to send data: {data}")
         return success
     except Exception as e:
-        logging.error(f"Exception during data sending: {str(e)}")
-        logging.error(f"Exception during sending data: {e}")
+        logger.error(f"Exception during data sending: {str(e)}", exc_info=True)
+        logger.error(f"Exception during sending data: {e}", exc_info=True)
         return False

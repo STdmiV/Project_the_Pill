@@ -7,6 +7,7 @@ import math
 import pandas as pd
 import json
 import os
+import logging # For logging
 from scipy.optimize import linear_sum_assignment
 from PyQt5.QtWidgets import QMessageBox
 import variables as var

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import ast
 import json
 import os
+import logging # For logging
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 
