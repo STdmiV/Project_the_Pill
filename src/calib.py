@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import os
 import time
-
+import logging # For logging
 from variables import (CALIBRATION_FILE, CALIBRATION_VIDEO_PATH, SQUARE_LENGTH, MARKER_LENGTH,
                        SQUARES_X, SQUARES_Y, MIN_CHARUCO_CORNERS, CAMERA_INDEX, MAX_CAPTURES, source_type, DICT_TYPE)
 
