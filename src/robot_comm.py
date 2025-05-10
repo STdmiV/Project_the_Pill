@@ -70,12 +70,12 @@ class RobotComm:
                 result = self.client.read_holding_registers(address, 1)
 
             if result: # Check if result is not None or empty
-                # logger.info(f"Read flag at address {address}: {result[0]}") # Log only on change or request?
+                logger.info(f"Read flag at address {address}: {result[0]}") # Log only on change or request?
                 return result[0] # Return the first (and only) value
             else:
-                last_ex = self.client.last_exception()
-                last_ex_str = str(last_ex) if last_ex else "Unknown read error"
-                logger.error(f"Failed to read flag at address {address}. Error: {last_ex_str}")
+                last_ex = self.client.last_error_as_txt()
+                
+                logger.error(f"Exception during flag reading at address {address} . Error: {last_ex} (is_coil={is_coil})", exc_info=True)
                 # print(f"[{datetime.now()}] Failed to read flag at address {address}. Error: {last_ex_str}")
                 return None
         except Exception as e:
@@ -151,7 +151,7 @@ def send_data(self, obj_id, x_mm, y_mm, width_mm, height_mm, angle, category_cod
     ]
     try:
         # starting from register address 0
-        success = self.client.write_registers(0, data)
+        success = self.client.write_multiple_registers (0, data)
         if success:
             logger.info(f"Sent data successfully: {data}")
             logger.info(f"Data sent: {data}")
