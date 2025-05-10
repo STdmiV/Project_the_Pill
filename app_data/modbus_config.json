@@ -1,9 +1,10 @@
 {
-    "host": "127.0.0.1",
+    "host": "192.168.56.1",
     "port": "502",
+    "modbus_offset": "32768",
     "req_addr": "100",
-    "is_coil": true,
+    "is_coil": false,
     "max_objs": "5",
-    "num_obj_addr": "200",
-    "data_start_addr": "201"
+    "num_obj_addr": "0",
+    "data_start_addr": "1"
 }

@@ -833,56 +833,83 @@ class MainWindow(QMainWindow):
         return tab
     
     def create_modbus_tab(self):
-        """Creates the Modbus TCP configuration tab."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setAlignment(Qt.AlignTop)
 
-        # Network Scan section
         scan_layout = QHBoxLayout()
         scan_layout.addWidget(QLabel("Scan Network:"))
-        self.device_selector = QComboBox() # Dropdown for IP selection
+        self.device_selector = QComboBox()
         scan_layout.addWidget(self.device_selector)
-        self.refresh_button = QPushButton("Scan") # Scan for Modbus devices
+        self.refresh_button = QPushButton("Scan")
         self.refresh_button.setFixedWidth(60)
         self.refresh_button.clicked.connect(self.scan_network_for_modbus)
         scan_layout.addWidget(self.refresh_button)
         layout.addLayout(scan_layout)
 
-        # Input fields for IP and port
         form_layout = QFormLayout()
-        self.ip_input = QLineEdit(var.MODBUS_TCP_HOST) # Use default from variables
-        self.port_input = QLineEdit(str(var.MODBUS_TCP_PORT)) # Use default from variables
+        self.ip_input = QLineEdit() 
+        self.port_input = QLineEdit()
         form_layout.addRow("IP Address:", self.ip_input)
         form_layout.addRow("Port:", self.port_input)
+
+        self.modbus_offset_input = QLineEdit() 
+        form_layout.addRow("Modbus Address Offset:", self.modbus_offset_input)
         layout.addLayout(form_layout)
         
-        layout.addWidget(QLabel("--- PLC Data Structure Settings ---")) # Separator
-        plc_form_layout = QFormLayout()
+        layout.addWidget(QLabel("--- PLC Data Structure (Enter PLC index if offset is non-zero) ---"))
+        
+        plc_settings_layout = QFormLayout()
 
-        # Fields for the new parameters
-        self.req_flag_addr_input = QLineEdit() # Initial value set during load
+        # --- Request Flag Address ---
+        req_flag_addr_widget = QWidget()
+        req_flag_addr_hbox = QHBoxLayout(req_flag_addr_widget)
+        req_flag_addr_hbox.setContentsMargins(0,0,0,0)
+        self.req_flag_addr_input = QLineEdit() 
+        req_flag_addr_hbox.addWidget(self.req_flag_addr_input)
+        req_flag_addr_hbox.addWidget(QLabel("Effective:"))
+        self.eff_req_flag_addr_label = QLabel("...")
+        req_flag_addr_hbox.addWidget(self.eff_req_flag_addr_label)
+        plc_settings_layout.addRow("Request Flag Addr/Index:", req_flag_addr_widget)
+
         self.req_flag_is_coil_check = QCheckBox()
+        plc_settings_layout.addRow("Flag is Coil:", self.req_flag_is_coil_check)
+
         self.max_objects_input = QLineEdit()
-        self.num_objects_addr_input = QLineEdit()
-        self.obj_data_start_addr_input = QLineEdit()
-        # Optional: self.regs_per_obj_input = QLineEdit(str(var.MODBUS_REGISTERS_PER_OBJECT))
+        plc_settings_layout.addRow("Max Objects/Packet:", self.max_objects_input)
 
-        plc_form_layout.addRow("Request Flag Addr:", self.req_flag_addr_input)
-        plc_form_layout.addRow("Flag is Coil:", self.req_flag_is_coil_check)
-        plc_form_layout.addRow("Max Objects/Packet:", self.max_objects_input)
-        plc_form_layout.addRow("Num Objects Addr:", self.num_objects_addr_input)
-        plc_form_layout.addRow("Object Data Start Addr:", self.obj_data_start_addr_input)
-        # Optional: plc_form_layout.addRow("Registers/Object:", self.regs_per_obj_input)
+        # --- Num Objects Address (Packet Start) ---
+        num_obj_addr_widget = QWidget()
+        num_obj_addr_hbox = QHBoxLayout(num_obj_addr_widget)
+        num_obj_addr_hbox.setContentsMargins(0,0,0,0)
+        self.num_objects_addr_input = QLineEdit() 
+        num_obj_addr_hbox.addWidget(self.num_objects_addr_input)
+        num_obj_addr_hbox.addWidget(QLabel("Effective:"))
+        self.eff_num_obj_addr_label = QLabel("...")
+        num_obj_addr_hbox.addWidget(self.eff_num_obj_addr_label)
+        plc_settings_layout.addRow("Num Objects Addr/Index (Packet Start):", num_obj_addr_widget)
 
-        layout.addLayout(plc_form_layout)
+        # --- Object Data Start Address ---
+        obj_data_start_addr_widget = QWidget()
+        obj_data_start_addr_hbox = QHBoxLayout(obj_data_start_addr_widget)
+        obj_data_start_addr_hbox.setContentsMargins(0,0,0,0)
+        self.obj_data_start_addr_input = QLineEdit() 
+        obj_data_start_addr_hbox.addWidget(self.obj_data_start_addr_input)
+        obj_data_start_addr_hbox.addWidget(QLabel("Effective:"))
+        self.eff_obj_data_start_addr_label = QLabel("...")
+        obj_data_start_addr_hbox.addWidget(self.eff_obj_data_start_addr_label)
+        # Решите, нужно ли это поле. Если да, раскомментируйте добавление в layout.
+        # Если оно не используется в логике отправки (а оно не используется), его можно скрыть или удалить.
+        # Пока оставим, но сделаем его невидимым по умолчанию, если оно не нужно.
+        plc_settings_layout.addRow("Object Data Start Addr/Index:", obj_data_start_addr_widget)
+        obj_data_start_addr_widget.setVisible(False) # Пример, как скрыть, если не нужно постоянно
 
-        # Add a save button specifically for Modbus settings
+        layout.addLayout(plc_settings_layout)
+
         self.save_modbus_button = QPushButton("Save Modbus Settings")
         self.save_modbus_button.clicked.connect(self.save_modbus_settings)
-        layout.addWidget(self.save_modbus_button, alignment=Qt.AlignCenter) # Center button maybe
+        layout.addWidget(self.save_modbus_button, alignment=Qt.AlignCenter)
 
-        # Connection Buttons and Status
         button_layout = QHBoxLayout()
         self.connect_button = QPushButton("Connect")
         self.disconnect_button = QPushButton("Disconnect")
@@ -894,12 +921,19 @@ class MainWindow(QMainWindow):
         self.status_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.status_label)
 
-        # Connections
         self.device_selector.currentTextChanged.connect(lambda ip: self.ip_input.setText(ip) if ip else None)
         self.connect_button.clicked.connect(self.connect_modbus)
         self.disconnect_button.clicked.connect(self.disconnect_modbus)
 
-        layout.addStretch() # Push elements to the top
+        self.modbus_offset_input.textChanged.connect(self.update_effective_modbus_addresses)
+        self.req_flag_addr_input.textChanged.connect(self.update_effective_modbus_addresses)
+        self.num_objects_addr_input.textChanged.connect(self.update_effective_modbus_addresses)
+        self.obj_data_start_addr_input.textChanged.connect(self.update_effective_modbus_addresses)
+        self.req_flag_is_coil_check.stateChanged.connect(self.update_effective_modbus_addresses)
+        
+
+
+        layout.addStretch()
         return tab
 
     def create_calibration_tab(self):
@@ -1856,23 +1890,70 @@ class MainWindow(QMainWindow):
 
         # --- 5. Prepare Modbus Parameters (Safely) ---
         try:
+            # --- Get "raw" values from the GUI ---
+            raw_req_addr_str = self.req_flag_addr_input.text().strip()
+            raw_num_obj_addr_str = self.num_objects_addr_input.text().strip()
+            
+            # Get the value for obj_data_start_addr if the widget exists and is active
+            raw_obj_data_start_addr_str = ""
+            if hasattr(self, 'obj_data_start_addr_input') and self.obj_data_start_addr_input.isEnabled():  # or .isVisible()
+                raw_obj_data_start_addr_str = self.obj_data_start_addr_input.text().strip()
+
+            offset_str = self.modbus_offset_input.text().strip()
+            is_coil = self.req_flag_is_coil_check.isChecked()
+            max_objs_str = self.max_objects_input.text().strip()
+
+            # --- Validation and conversion to int using default values for INDEXES ---
+            
+            # Offset: 0 if invalid or not entered, otherwise the entered value
+            offset = int(offset_str) if offset_str.isdigit() and int(offset_str) >= 0 else 0
+            
+            # Request flag address: from the field or default index
+            raw_req_addr = int(raw_req_addr_str) if raw_req_addr_str.isdigit() else var.MODBUS_DATA_REQUEST_ADDR_IDX
+            
+            # Number of objects address: from the field or default index
+            raw_num_obj_addr = int(raw_num_obj_addr_str) if raw_num_obj_addr_str.isdigit() else var.MODBUS_NUM_OBJECTS_ADDR_IDX
+            
+            # Starting address of object data (if used)
+            raw_obj_data_start_addr = var.MODBUS_OBJECT_DATA_START_ADDR_IDX  # Default value
+            if hasattr(self, 'obj_data_start_addr_input') and self.obj_data_start_addr_input.isEnabled():
+                if raw_obj_data_start_addr_str.isdigit():
+                    raw_obj_data_start_addr = int(raw_obj_data_start_addr_str)
+            
+            # Maximum number of objects
+            max_objs = int(max_objs_str) if max_objs_str.isdigit() else var.MODBUS_MAX_OBJECTS
+
+            # --- Calculate effective addresses ---
+            # Offset is applied if offset > 0. For the flag - only if it is not a Coil.
+            effective_req_addr = (offset + raw_req_addr) if (not is_coil and offset > 0) else raw_req_addr
+            
+            # For register addresses (num_obj_addr and obj_data_start_addr), offset is applied if offset > 0
+            effective_num_obj_addr = (offset + raw_num_obj_addr) if offset > 0 else raw_num_obj_addr
+            effective_obj_data_start_addr = (offset + raw_obj_data_start_addr) if offset > 0 else raw_obj_data_start_addr
+            
+            # Check if effective addresses are within valid ranges
             modbus_params = {
-                'req_addr': int(self.req_flag_addr_input.text().strip()) if self.req_flag_addr_input.text().strip().isdigit() else var.MODBUS_DATA_REQUEST_ADDR,
-                'is_coil': self.req_flag_is_coil_check.isChecked(),
-                'max_objs': int(self.max_objects_input.text().strip()) if self.max_objects_input.text().strip().isdigit() else var.MODBUS_MAX_OBJECTS,
-                'num_obj_addr': int(self.num_objects_addr_input.text().strip()) if self.num_objects_addr_input.text().strip().isdigit() else var.MODBUS_NUM_OBJECTS_ADDR,
-                'data_start_addr': int(self.obj_data_start_addr_input.text().strip()) if self.obj_data_start_addr_input.text().strip().isdigit() else var.MODBUS_OBJECT_DATA_START_ADDR
+                'req_addr': effective_req_addr,
+                'is_coil': is_coil,
+                'max_objs': max_objs,
+                'num_obj_addr': effective_num_obj_addr,
+                'data_start_addr': effective_obj_data_start_addr 
             }
-            logging.debug(f"Modbus parameters for worker thread: {modbus_params}")
-        except ValueError as e_modbus_val: # Should be caught by isdigit, but defensive
-            logging.error(f"Error converting Modbus parameters to int: {e_modbus_val}")
-            self.showMessageSignal.emit("Error", "Invalid Modbus parameters. Please check numeric inputs.")
-            if self.working_mode_capture: self.working_mode_capture.release()
-            self.working_mode_capture = None
+            logging.info(f"Raw Addrs/Indices from GUI: req_idx={raw_req_addr}, num_obj_idx={raw_num_obj_addr}, obj_data_start_idx={raw_obj_data_start_addr}, offset={offset}")
+            logging.info(f"Effective Modbus parameters for worker thread: {modbus_params}")
+            
+        except ValueError as ve: # Catch specific ValueError from failed int() conversions
+            logging.error(f"ValueError during Modbus parameter preparation: {ve}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Invalid numeric value in Modbus settings. Please check all address, offset, and max objects fields.\nDetails: {ve}")
             self.working_start_button.setEnabled(True)
             self.working_stop_button.setEnabled(False)
             return
-
+        except Exception as e_modbus_prep: # Catch other unexpected errors here
+            logging.error(f"Unexpected error during Modbus parameter preparation: {e_modbus_prep}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Error preparing Modbus parameters:\n{e_modbus_prep}")
+            self.working_start_button.setEnabled(True)
+            self.working_stop_button.setEnabled(False)
+            return
 
         # --- 6. Define and Start the Worker Thread ---
         def thread_func(video_capture_thread, mb_params_thread): # Use distinct names for args
@@ -2600,6 +2681,7 @@ class MainWindow(QMainWindow):
         self.gather_stop_button.setEnabled(False) # Keep stop button disabled until success
         self.handleEnableClassification(False)
         self.setGatheringStatus("Initializing...")
+        QApplication.processEvents()
 
 
         # --- 1. Select and Initialize Video Source ---
@@ -3024,11 +3106,65 @@ class MainWindow(QMainWindow):
         logging.info("Cleanup finished. Application will close now.")
         event.accept() # Allow window to close
 
+    def update_effective_modbus_addresses(self):
+        """ Updates effective Modbus addresses based on user input and offset."""
+        # Check if widgets exist before accessing them
+        try:
+            offset_str = self.modbus_offset_input.text().strip()
+            # Validate and convert offset to int
+            # If not valid, set to 0
+            offset = int(offset_str) if offset_str.isdigit() and int(offset_str) >= 0 else 0
+
+            is_coil = self.req_flag_is_coil_check.isChecked()
+
+            # Request Flag Address
+            raw_req_addr_str = self.req_flag_addr_input.text().strip()
+            if raw_req_addr_str.isdigit():
+                raw_req_addr = int(raw_req_addr_str)
+                # Effective Request Flag Address
+                # If offset is > 0 and it's not a coil, add offset to the address
+                eff_req = (offset + raw_req_addr) if (not is_coil and offset > 0) else raw_req_addr
+                self.eff_req_flag_addr_label.setText(str(eff_req))
+            else:
+                self.eff_req_flag_addr_label.setText("NaN")
+
+            # Num Objects Address (Packet Start)
+            raw_num_obj_addr_str = self.num_objects_addr_input.text().strip()
+            if raw_num_obj_addr_str.isdigit():
+                raw_num_obj_addr = int(raw_num_obj_addr_str)
+            # Effective Num Objects Address
+            # If offset is > 0 and it's not a coil, add offset to the address
+                eff_num_obj = (offset + raw_num_obj_addr) if offset > 0 else raw_num_obj_addr
+                self.eff_num_obj_addr_label.setText(str(eff_num_obj))
+            else:
+                self.eff_num_obj_addr_label.setText("NaN")
+
+            # Object Data Start Address
+            if hasattr(self, 'obj_data_start_addr_input') and self.obj_data_start_addr_input.isVisible():
+                raw_obj_data_start_addr_str = self.obj_data_start_addr_input.text().strip()
+                if raw_obj_data_start_addr_str.isdigit():
+                    raw_obj_data_start_addr = int(raw_obj_data_start_addr_str)
+                    eff_obj_data_start = (offset + raw_obj_data_start_addr) if offset > 0 else raw_obj_data_start_addr
+                    self.eff_obj_data_start_addr_label.setText(str(eff_obj_data_start))
+                else:
+                    self.eff_obj_data_start_addr_label.setText("NaN")
+            elif hasattr(self, 'eff_obj_data_start_addr_label'): # Check if the label exists
+                self.eff_obj_data_start_addr_label.setText("N/A")
+
+
+        except ValueError: # Handle non-integer inputs gracefully
+            self.eff_req_flag_addr_label.setText("Invalid")
+            self.eff_num_obj_addr_label.setText("Invalid")
+            if hasattr(self, 'eff_obj_data_start_addr_label'): self.eff_obj_data_start_addr_label.setText("Invalid")
+        except Exception as e:
+            logging.error(f"Error updating effective Modbus addresses: {e}")
+
     def save_modbus_settings(self):
         """Saves Modbus GUI settings to a JSON file."""
         settings = {
             "host": self.ip_input.text(),
-            "port": self.port_input.text(),
+            "port": self.port_input.text(), 
+            "modbus_offset": self.modbus_offset_input.text(),
             "req_addr": self.req_flag_addr_input.text(),
             "is_coil": self.req_flag_is_coil_check.isChecked(),
             "max_objs": self.max_objects_input.text(),
@@ -3057,11 +3193,12 @@ class MainWindow(QMainWindow):
         defaults = {
             "host": var.MODBUS_TCP_HOST,
             "port": str(var.MODBUS_TCP_PORT),
-            "req_addr": str(var.MODBUS_DATA_REQUEST_ADDR),
+            "modbus_offset": str(var.MODBUS_DEFAULT_OFFSET_BASE),
+            "req_addr_idx": str(var.MODBUS_DATA_REQUEST_ADDR_IDX),
             "is_coil": var.MODBUS_IS_REQUEST_FLAG_COIL,
             "max_objs": str(var.MODBUS_MAX_OBJECTS),
-            "num_obj_addr": str(var.MODBUS_NUM_OBJECTS_ADDR),
-            "data_start_addr": str(var.MODBUS_OBJECT_DATA_START_ADDR)
+            "num_obj_addr_idx": str(var.MODBUS_NUM_OBJECTS_ADDR_IDX),
+            "obj_data_start_addr_idx": str(var.MODBUS_OBJECT_DATA_START_ADDR_IDX),
             # "regs_per_obj": str(var.MODBUS_REGISTERS_PER_OBJECT) # If added
         }
         settings = defaults.copy() # Start with defaults
@@ -3085,22 +3222,23 @@ class MainWindow(QMainWindow):
 
         # --- Apply settings to the GUI widgets ---
         try:
-            self.ip_input.setText(settings["host"])
-            self.port_input.setText(str(settings["port"])) # Ensure string
-            self.req_flag_addr_input.setText(str(settings["req_addr"]))
-            # Ensure 'is_coil' is treated as boolean
-            is_coil_val = settings["is_coil"]
-            self.req_flag_is_coil_check.setChecked(bool(is_coil_val))
+            self.ip_input.setText(str(settings["host"]))
+            self.port_input.setText(str(settings["port"]))
+            self.modbus_offset_input.setText(str(settings["modbus_offset"]))
+            self.req_flag_addr_input.setText(str(settings["req_addr_idx"]))
+            self.req_flag_is_coil_check.setChecked(bool(settings["is_coil"]))
             self.max_objects_input.setText(str(settings["max_objs"]))
-            self.num_objects_addr_input.setText(str(settings["num_obj_addr"]))
-            self.obj_data_start_addr_input.setText(str(settings["data_start_addr"]))
-            # if hasattr(self, 'regs_per_obj_input'): # Check if widget exists
-            #     self.regs_per_obj_input.setText(str(settings.get("regs_per_obj", var.MODBUS_REGISTERS_PER_OBJECT)))
+            self.num_objects_addr_input.setText(str(settings["num_obj_addr_idx"]))
+            self.obj_data_start_addr_input.setText(str(settings["obj_data_start_addr_idx"]))        
         except KeyError as e:
+            
             logging.error(f"Missing key in loaded/default Modbus settings: {e}")
         except Exception as e_apply:
             logging.error(f"Error applying loaded Modbus settings to GUI: {e_apply}")    
-
+        self.update_effective_modbus_addresses()
+        
+        
+        
     def _overlay_caption(self, image: np.ndarray, caption: str) -> np.ndarray:
         """ Overlays a caption text onto the image. """
         img_copy = image.copy()

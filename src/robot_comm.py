@@ -12,7 +12,7 @@ import os
 logger = logging.getLogger(__name__)
 
 class RobotComm:
-    def __init__(self, host="192.168.0.10", port=502, timeout=5):
+    def __init__(self, host="127.0.0.1", port=502, timeout=5):
         """
         :param host: IP address (str)
         :param port: Modbus TCP port (int, default: 502)
@@ -21,7 +21,11 @@ class RobotComm:
         self.host = host
         self.port = port
         self.timeout = timeout
-        self.client = ModbusClient(host=self.host, port=self.port, timeout=self.timeout)
+        self.client = ModbusClient(host=self.host, 
+                                   port=self.port,
+                                   unit_id=1, 
+                                   auto_open=False,  
+                                   timeout=self.timeout)
         self.connected = False
 
 
@@ -45,7 +49,22 @@ class RobotComm:
             self.client.close()
             self.connected = False
             logger.info("Disconnected")
-            logger.info(f"Disconnected from Modbus server.")
+
+    def _check(self):
+        client_is_open_attr = getattr(self.client, 'is_open', None)
+
+        if client_is_open_attr is None:
+            # Эта ситуация не должна возникать, если self.client - это ModbusClient
+            logger.error("CRITICAL _check: self.client does not have an 'is_open' attribute!")
+            raise AttributeError("self.client has no attribute 'is_open'")
+
+        # logger.debug(f"In _check: Type of self.client.is_open IS {type(client_is_open_attr)}") # Можно оставить для отладки
+        # logger.debug(f"In _check: Value of self.client.is_open IS {client_is_open_attr}")     # Можно оставить для отладки
+
+        # Так как is_open - это свойство, client_is_open_attr уже содержит True или False
+        if not client_is_open_attr: # Просто проверяем значение свойства
+            raise RuntimeError("Modbus socket is closed (checked via property self.client.is_open)")
+        # Если мы здесь, значит, client_is_open_attr == True, и сокет открыт
             
     def read_request_flag(self, address, is_coil=False):
         """
@@ -56,6 +75,10 @@ class RobotComm:
         Returns:
             The value read (e.g., 0 or 1), or None on error.
         """
+        # Check if the client is connected before attempting to read
+        self._check()
+        
+        
         if not self.connected:
             logger.error("Cannot read flag: Not connected.")
             # print(f"[{datetime.now()}] Not connected. Cannot read flag.") # Keep logger primary
@@ -73,7 +96,7 @@ class RobotComm:
                 logger.info(f"Read flag at address {address}: {result[0]}") # Log only on change or request?
                 return result[0] # Return the first (and only) value
             else:
-                last_ex = self.client.last_error_as_txt()
+                last_ex = self.client.last_error_as_txt
                 
                 logger.error(f"Exception during flag reading at address {address} . Error: {last_ex} (is_coil={is_coil})", exc_info=True)
                 # print(f"[{datetime.now()}] Failed to read flag at address {address}. Error: {last_ex_str}")
@@ -92,6 +115,8 @@ class RobotComm:
         Returns:
             True on success, False on failure.
         """
+        self._check()
+        
         if not self.connected:
             logger.error("Cannot reset flag: Not connected.")
             return False
@@ -115,7 +140,16 @@ class RobotComm:
 
 
 
-def send_data(self, obj_id, x_mm, y_mm, width_mm, height_mm, angle, category_code):
+def send_data(self, 
+              obj_id: int, 
+              x_mm: float, 
+              y_mm: float, 
+              width_mm: float, 
+              height_mm: float, 
+              angle: float, 
+              category_code: int,
+              start_address: int,
+              ):
     """
     Sends detected object data to the robot via Modbus registers.
 
@@ -137,29 +171,26 @@ def send_data(self, obj_id, x_mm, y_mm, width_mm, height_mm, angle, category_cod
     self.connect()
     if not self.connected:
         logger.error("Reconnection failed. Cannot send data.")
-        logger.error("Reconnection failed. Cannot send data.")
         return False
 
     data = [
-        obj_id,
-        int(x_mm * 100),
-        int(y_mm * 100),
-        int(width_mm * 100),
-        int(height_mm * 100),
-        int(angle * 100),
-        category_code
+        obj_id & 0xFFFF,
+        int(x_mm * 100) & 0xFFFF,
+        int(y_mm * 100) & 0xFFFF,
+        int(width_mm * 100) & 0xFFFF,
+        int(height_mm * 100) & 0xFFFF,
+        int(angle * 100) & 0xFFFF,
+        category_code & 0xFFFF,
     ]
+    
     try:
         # starting from register address 0
-        success = self.client.write_multiple_registers (0, data)
+        success = self.client.write_multiple_registers (start_address, data)
         if success:
-            logger.info(f"Sent data successfully: {data}")
             logger.info(f"Data sent: {data}")
         else:
-            logger.error("Failed to send.")
-            logger.error(f"Failed to send data: {data}")
+            logger.error(f"Failed to send: {data}")
         return success
     except Exception as e:
         logger.error(f"Exception during data sending: {str(e)}", exc_info=True)
-        logger.error(f"Exception during sending data: {e}", exc_info=True)
         return False
