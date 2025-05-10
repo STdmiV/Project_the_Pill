@@ -98,13 +98,14 @@ MODBUS_TCP_PORT = 502            # Default Modbus TCP Port
 MODBUS_TIMEOUT = 5               # Connection timeout in seconds
 
 # --- Additions for PLC Data Request ---
+MODBUS_DEFAULT_OFFSET_BASE = 32768
 MODBUS_DATA_REQUEST_ADDR = 100   # <== CHANGE THIS: Address of the PLC register/coil for requesting data
 MODBUS_IS_REQUEST_FLAG_COIL = False # <== CHANGE THIS: True if the request flag is a Coil, False if a Holding Register
-
+MODBUS_DATA_REQUEST_ADDR_IDX = 100 # <== CHANGE THIS: Address for the register/coil holding the request flag
 # --- Additions for Multi-Object Packets ---
 MODBUS_MAX_OBJECTS = 5              # <== CHANGE THIS: Max objects per packet PLC can handle
-MODBUS_NUM_OBJECTS_ADDR = 200       # <== CHANGE THIS: Address for register holding the number of objects
-MODBUS_OBJECT_DATA_START_ADDR = 201 # <== CHANGE THIS: Start address for the data of the first object
+MODBUS_NUM_OBJECTS_ADDR_IDX = 0       # <== CHANGE THIS: Address for register holding the number of objects
+MODBUS_OBJECT_DATA_START_ADDR_IDX = 1 # <== CHANGE THIS: Start address for the data of the first object
 MODBUS_REGISTERS_PER_OBJECT = 7     # Number of registers used per object (id, x, y, w, h, angle, category) - Usually stays 7 based on your old send_data
 
 
