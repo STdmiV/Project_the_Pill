@@ -58,6 +58,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Pill Project Pilot GUI")
         # Increased size slightly for better layout
         self.resize(1200, 800)
+        self.working_mode_capture = None
+        self.gather_mode_capture = None
 
         # --- State Variables ---
         self.detection_params = {
@@ -67,11 +69,12 @@ class MainWindow(QMainWindow):
             "CANNY_HIGH": 50,
             "MIN_AREA": 100,
             "MAX_AREA": 50000,
-            "CONVERSION_FACTOR": 1.0 # Will be calculated
+           # "CONVERSION_FACTOR": 1.0 # Will be calculated
         }
         self.load_detection_params() # Load saved params over defaults
 
         self.working_area_mask = None
+        self.homography_matrix_to_mm = None # To store the homography matrix
         self.last_overlay_frame = None # Frame shown during confirmation
         self.display_overlay_search = False # Controlled by user? Add checkbox if needed.
 
@@ -1013,7 +1016,7 @@ class MainWindow(QMainWindow):
 
         # --- Video Display ---
         self.working_video_label = QLabel("Working mode video will appear here")
-        self.working_video_label.setMinimumSize(640, 480) # Larger minimum
+        self.working_video_label.setMinimumSize(426, 240) # Larger minimum
         self.working_video_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.working_video_label.setAlignment(Qt.AlignCenter)
         self.working_video_label.setStyleSheet("background-color: #222; color: white;")
@@ -1026,13 +1029,13 @@ class MainWindow(QMainWindow):
         self.canny_debug_label = QLabel("Canny")
         self.canny_debug_label.setAlignment(Qt.AlignCenter)
         self.canny_debug_label.setStyleSheet("background-color: #555; color: white;")
-        self.canny_debug_label.setMinimumSize(320, 180) # Smaller minimum size
+        self.canny_debug_label.setMinimumSize(640, 360) # Smaller minimum size
         self.canny_debug_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         self.contour_debug_label = QLabel("Contours")
         self.contour_debug_label.setAlignment(Qt.AlignCenter)
         self.contour_debug_label.setStyleSheet("background-color: #555; color: white;")
-        self.contour_debug_label.setMinimumSize(320, 180)
+        self.contour_debug_label.setMinimumSize(640, 360)
         self.contour_debug_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         debug_layout.addWidget(self.canny_debug_label)
@@ -1495,7 +1498,7 @@ class MainWindow(QMainWindow):
         def check_ip(ip_to_check):
             try:
                 # Short timeout for scanning
-                with socket.create_connection((ip_to_check, port), timeout=0.2):
+                with socket.create_connection((ip_to_check, port), timeout=10):
                     logging.debug(f"Modbus device found at {ip_to_check}")
                     return ip_to_check # Return IP if connection successful
             except socket.timeout:
@@ -1622,51 +1625,140 @@ class MainWindow(QMainWindow):
         self.calib_stop_button.setEnabled(False) # Disable stop button after clicking
         # Don't disable start button here, wait for done_callback
 
+    def _prepare_debug_pixmap(self, image_data: np.ndarray, caption: str, label_widget: QLabel) -> QPixmap | None:
+        """
+        Prepares a QPixmap for debug views from raw image data, adds a caption,
+        and scales it to the target label widget.
+
+        Args:
+            image_data: The raw image data (e.g., Canny edges, contours). 
+                        Expected to be grayscale or BGR.
+            caption: Text to overlay on the image.
+            label_widget: The QLabel widget where this pixmap will be displayed.
+
+        Returns:
+            QPixmap object, or None if an error occurs or image_data is invalid.
+        """
+        if image_data is None or image_data.size == 0:
+            logging.debug(f"No valid image data for preparing debug pixmap: {caption}")
+            return None
+        
+        try:
+            img_to_process = image_data.copy() # Work on a copy
+
+            # Ensure image is 8-bit if it's not already (e.g., Canny edges are often bool or other types)
+            if img_to_process.dtype != np.uint8:
+                if np.max(img_to_process) <= 1 and img_to_process.min() >=0 : # Likely boolean or normalized float 0-1
+                    img_to_process = (img_to_process * 255).astype(np.uint8)
+                else: # Try to convert directly, hoping it's a compatible type
+                    img_to_process = img_to_process.astype(np.uint8)
+            
+            # Convert grayscale to BGR if necessary for color caption overlay
+            if img_to_process.ndim == 2 or (img_to_process.ndim == 3 and img_to_process.shape[2] == 1):
+                img_to_process = cv2.cvtColor(img_to_process, cv2.COLOR_GRAY2BGR)
+
+            # --- Add caption overlay (similar to _overlay_caption) ---
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.5 # Smaller font for debug views
+            thickness = 1
+            text_color = (255, 255, 255) # White text
+            
+            # Get text size to position background
+            (text_w, text_h), baseline = cv2.getTextSize(caption, font, font_scale, thickness)
+            
+            # Position at top-left with padding
+            rect_x, rect_y = 2, 2 
+            # Simple black background for caption
+            cv2.rectangle(img_to_process, (rect_x, rect_y), 
+                          (rect_x + text_w + 4, rect_y + text_h + baseline + 2), 
+                          (0, 0, 0), cv2.FILLED)
+            # Put text on top
+            cv2.putText(img_to_process, caption, (rect_x + 2, rect_y + text_h + 1), 
+                        font, font_scale, text_color, thickness, cv2.LINE_AA)
+
+            # --- Convert to QPixmap using frame_to_qpixmap ---
+            # Get target dimensions from the label_widget
+            lbl_w = label_widget.width() if label_widget.width() > 0 else 426  # Default width
+            lbl_h = label_widget.height() if label_widget.height() > 0 else 240 # Default height
+
+            pixmap = self.frame_to_qpixmap(img_to_process, lbl_w, lbl_h) # Use your existing method
+
+            if not pixmap.isNull():
+                return pixmap
+            else:
+                logging.warning(f"Failed to create QPixmap for debug view: {caption}")
+                return None
+                
+        except Exception as e_prep:
+            logging.error(f"Error in _prepare_debug_pixmap for '{caption}': {e_prep}", exc_info=True)
+            return None
 
     def start_working_mode(self):
         """
-        Starts the working mode: initiates video capture, confirms working area,
-        and launches the main processing thread.
-        Refactored for Signals/Slots and new Modbus logic.
+        Starts the working mode: 
+        1. Initializes video capture.
+        2. Loads calibration.
+        3. Attempts to find and confirm the working area and homography over several frames.
+        4. Initializes the ObjectDetector.
+        5. Starts the background processing thread.
         """
         if self._working_thread is not None and self._working_thread.is_alive():
             logging.warning("Working mode thread is already running.")
             self.showMessageSignal.emit("Warning", "Working mode is already running.")
             return
 
-        # --- Reset State ---
+        logging.info("Attempting to start working mode...")
+
+        # --- 0. Reset State for a new attempt ---
         self._working_stop_flag = False
         self._detector = None
         self.working_area_mask = None
+        self.homography_matrix_to_mm = None
         self.last_detections = []
-        self.working_start_button.setEnabled(False) # Disable start button
-        self.working_stop_button.setEnabled(True)  # Enable stop button
+        
+        # If a previous capture object exists, release it first (defensive)
+        if hasattr(self, 'working_mode_capture') and self.working_mode_capture is not None:
+            logging.debug("Releasing pre-existing working_mode_capture before new start.")
+            self.working_mode_capture.release()
+            self.working_mode_capture = None
+        
+        self.working_start_button.setEnabled(False) # Disable start button immediately
+        self.working_stop_button.setEnabled(False)  # Keep stop button disabled until success
 
-        # --- 1. Select Video Source ---
-        source = self.working_source_selector.currentText()
-        cap = None
+        # --- 1. Select and Initialize Video Source ---
+        source_text = self.working_source_selector.currentText() # Use correct selector
+        # self.working_mode_capture will store the cv2.VideoCapture object
+        self.working_mode_capture = None 
         source_name = ""
         try:
-            if source == "Working video":
+            if source_text == "Working video":
                 video_path = self.working_video_path_input.text()
-                if not os.path.exists(video_path):
-                    raise FileNotFoundError(f"Working video file not found: {video_path}")
-                cap = cv2.VideoCapture(video_path)
+                if not video_path or not os.path.exists(video_path):
+                    raise FileNotFoundError(f"Working video file not found or path empty: {video_path}")
+                self.working_mode_capture = cv2.VideoCapture(video_path)
                 source_name = video_path
             else: # Camera source
-                index = int(self.working_camera_index_input.text())
-                cap = cv2.VideoCapture(index)
+                index_str = self.working_camera_index_input.text() # Use correct input
+                if not index_str.strip().isdigit(): # Add strip() and check if it's a digit
+                    raise ValueError("Invalid camera index: not a number.")
+                index = int(index_str)
+                if index < 0: 
+                    raise ValueError("Invalid camera index: must be non-negative.")
+                self.working_mode_capture = cv2.VideoCapture(index)
                 source_name = f"Camera Index {index}"
 
-            if not cap or not cap.isOpened():
+            if not self.working_mode_capture or not self.working_mode_capture.isOpened():
+                # Set self.working_mode_capture to None if it failed to open, so cleanup doesn't try to release it.
+                self.working_mode_capture = None 
                 raise IOError(f"Failed to open video source: {source_name}")
             logging.info(f"Using working source: {source_name}")
 
-        except (FileNotFoundError, ValueError, IOError, Exception) as e:
-            logging.error(f"Error initializing video source: {e}")
-            self.showMessageSignal.emit("Error", f"Error initializing video source:\n{e}")
-            if cap: cap.release()
-            self.working_start_button.setEnabled(True) # Re-enable start button
+        except (FileNotFoundError, ValueError, IOError, Exception) as e_source:
+            logging.error(f"Error initializing video source: {e_source}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Error initializing video source:\n{e_source}")
+            if self.working_mode_capture: self.working_mode_capture.release() # Release if created
+            self.working_mode_capture = None
+            self.working_start_button.setEnabled(True)
             self.working_stop_button.setEnabled(False)
             return
 
@@ -1674,305 +1766,458 @@ class MainWindow(QMainWindow):
         try:
             if not os.path.exists(var.CALIBRATION_FILE):
                  raise FileNotFoundError(f"Calibration file not found: {var.CALIBRATION_FILE}")
-            # No need to load matrix/coeffs here, undistort_frame does it. Just check existence.
             logging.info(f"Found calibration data file: {var.CALIBRATION_FILE}")
-        except Exception as e:
-            logging.error(f"Calibration file check failed: {e}")
-            self.showMessageSignal.emit("Error", f"Calibration file error:\n{e}\nPlease run calibration.")
-            cap.release()
+        except Exception as e_calib:
+            logging.error(f"Calibration file check failed: {e_calib}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Calibration file error:\n{e_calib}\nPlease run calibration.")
+            if self.working_mode_capture: self.working_mode_capture.release()
+            self.working_mode_capture = None
             self.working_start_button.setEnabled(True)
             self.working_stop_button.setEnabled(False)
             return
 
-        # --- 3. Confirm Working Area (runs in main thread) ---
-        ret, first_frame = cap.read()
-        if not ret or first_frame is None:
-            logging.error("Failed to read the first frame from the video source.")
-            self.showMessageSignal.emit("Error", "Failed to read the first frame.")
-            cap.release()
+        # --- 3. Confirm Working Area & Homography (try multiple frames) ---
+        confirmed_wa_and_homography = False
+        max_frames_to_try_wa = var.MAX_FRAMES_TO_FIND_WORKING_AREA # Use a variable from var.py
+        frames_tried_wa = 0
+        
+        # Update status using a relevant label for working mode
+        # Assuming self.setGatheringStatus is a generic status update method
+        # Or create self.setWorkingStatus if needed for distinct messages.
+        if hasattr(self, 'setGatheringStatus'): # Check if the method exists
+            self.setGatheringStatus("Detecting Working Area...") 
+        elif hasattr(self, 'status_label'): # Fallback to a generic status label
+            self.status_label.setText("Status: Detecting Working Area...")
+        QApplication.processEvents()
+
+        while frames_tried_wa < max_frames_to_try_wa and not self._working_stop_flag:
+            ret, frame_wa = self.working_mode_capture.read() # Read from the instance capture object
+            if not ret or frame_wa is None:
+                logging.error("Failed to read frame for WA detection or video stream ended.")
+                break 
+
+            undistorted_frame_wa = undistort_frame(frame_wa, var.CALIBRATION_FILE)
+            
+            # prepare_working_area sets self.working_area_mask and self.homography_matrix_to_mm
+            # if successful for the given undistorted_frame_wa.
+            if self.prepare_working_area(undistorted_frame_wa): # This returns True if WA/Homography was confirmed by user
+                if self.homography_matrix_to_mm is not None: # Double check homography was indeed set
+                    confirmed_wa_and_homography = True
+                    logging.info(f"Working Area and Homography confirmed on frame {frames_tried_wa + 1}.")
+                    break # Exit loop, success
+                else:
+                    logging.warning(f"prepare_working_area returned True, but homography_matrix_to_mm is still None on frame {frames_tried_wa + 1}.")
+            
+            frames_tried_wa += 1
+            logging.debug(f"WA/Homography not confirmed on frame {frames_tried_wa}. Trying next...")
+            QApplication.processEvents() 
+            time.sleep(0.05) # Slightly increased delay for better GUI responsiveness during this loop
+
+        if not confirmed_wa_and_homography: # Check the flag
+            logging.warning(f"Working area/homography not found or confirmed after trying {frames_tried_wa} frames or process stopped.")
+            self.showMessageSignal.emit("Error", "Could not define working area or obtain homography from the video source.")
+            if self.working_mode_capture: self.working_mode_capture.release()
+            self.working_mode_capture = None
             self.working_start_button.setEnabled(True)
             self.working_stop_button.setEnabled(False)
+            if hasattr(self, 'setGatheringStatus'): self.setGatheringStatus("Idle - WA/Homography not set.")
+            elif hasattr(self, 'status_label'): self.status_label.setText("Status: Idle - WA/Homography not set.")
             return
 
-        # Undistort the frame for working area detection
-        undistorted_first_frame = undistort_frame(first_frame, var.CALIBRATION_FILE)
-        if undistorted_first_frame is first_frame: # Check if undistortion worked
-             logging.warning("Undistortion failed for first frame, using original for working area detection.")
-
-        confirmed = self.prepare_working_area(undistorted_first_frame) # Pass undistorted frame
-        if not confirmed:
-            logging.warning("Working area confirmation failed or was cancelled.")
-            cap.release()
-            self.working_start_button.setEnabled(True)
-            self.working_stop_button.setEnabled(False)
-            return
-        # If confirmed, self.working_area_mask and self.detection_params["CONVERSION_FACTOR"] are set
-
+        # --- If successful up to here, enable stop button ---
+        self.working_stop_button.setEnabled(True)
+        if hasattr(self, 'setGatheringStatus'): self.setGatheringStatus("Working Area Confirmed. Initializing Detector...")
+        elif hasattr(self, 'status_label'): self.status_label.setText("Status: WA Confirmed. Initializing Detector...")
+        QApplication.processEvents()
+        
         # --- 4. Initialize Object Detector ---
         identification_config_path = None
         if not os.path.exists(var.IDENTIFICATION_CONFIG):
             logging.warning(f"Identification config {var.IDENTIFICATION_CONFIG} not found.")
-            # self.showMessageSignal.emit("Warning", f"Identification config not found:\n{var.IDENTIFICATION_CONFIG}\nObject recognition may be limited.")
         else:
             identification_config_path = var.IDENTIFICATION_CONFIG
             logging.info(f"Using identification config: {identification_config_path}")
 
         try:
-            # Pass the updated detection_params (includes CONVERSION_FACTOR)
             self._detector = ObjectDetector(
                 identification_config_path=identification_config_path,
                 detection_params=self.detection_params,
+                homography_matrix=self.homography_matrix_to_mm
             )
-            logging.info("Object detector initialized successfully.")
-        except Exception as e:
-            logging.error(f"Failed to initialize ObjectDetector: {e}", exc_info=True)
-            self.showMessageSignal.emit("Error", f"Failed to initialize ObjectDetector:\n{e}")
-            cap.release()
+            logging.info("Object detector initialized successfully with homography matrix.")
+        except Exception as e_detector_init:
+            logging.error(f"Failed to initialize ObjectDetector: {e_detector_init}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Failed to initialize ObjectDetector:\n{e_detector_init}")
+            if self.working_mode_capture: self.working_mode_capture.release()
+            self.working_mode_capture = None
+            self.working_start_button.setEnabled(True)
+            self.working_stop_button.setEnabled(False)
+            return
+
+        # --- 5. Prepare Modbus Parameters (Safely) ---
+        try:
+            modbus_params = {
+                'req_addr': int(self.req_flag_addr_input.text().strip()) if self.req_flag_addr_input.text().strip().isdigit() else var.MODBUS_DATA_REQUEST_ADDR,
+                'is_coil': self.req_flag_is_coil_check.isChecked(),
+                'max_objs': int(self.max_objects_input.text().strip()) if self.max_objects_input.text().strip().isdigit() else var.MODBUS_MAX_OBJECTS,
+                'num_obj_addr': int(self.num_objects_addr_input.text().strip()) if self.num_objects_addr_input.text().strip().isdigit() else var.MODBUS_NUM_OBJECTS_ADDR,
+                'data_start_addr': int(self.obj_data_start_addr_input.text().strip()) if self.obj_data_start_addr_input.text().strip().isdigit() else var.MODBUS_OBJECT_DATA_START_ADDR
+            }
+            logging.debug(f"Modbus parameters for worker thread: {modbus_params}")
+        except ValueError as e_modbus_val: # Should be caught by isdigit, but defensive
+            logging.error(f"Error converting Modbus parameters to int: {e_modbus_val}")
+            self.showMessageSignal.emit("Error", "Invalid Modbus parameters. Please check numeric inputs.")
+            if self.working_mode_capture: self.working_mode_capture.release()
+            self.working_mode_capture = None
             self.working_start_button.setEnabled(True)
             self.working_stop_button.setEnabled(False)
             return
 
 
-        # --- 5. Define and Start the Worker Thread ---
-        # Accept mb_params dictionary as the second argument
-
-        # Define Modbus parameters
-        modbus_params = {
-            'req_addr': int(self.req_flag_addr_input.text()),
-            'is_coil': self.req_flag_is_coil_check.isChecked(),
-            'max_objs': int(self.max_objects_input.text()),
-            'num_obj_addr': int(self.num_objects_addr_input.text()),
-            'data_start_addr': int(self.obj_data_start_addr_input.text())
-        }
-
-        # --- 5. Define and Start the Worker Thread ---
-        # Accept mb_params dictionary as the second argument
-        def thread_func(video_capture, mb_params):
+        # --- 6. Define and Start the Worker Thread ---
+        def thread_func(video_capture_thread, mb_params_thread): # Use distinct names for args
             """Worker function to process video frames, handle Modbus, and update GUI via signals."""
-            logging.info("Working mode thread started.")
-            frame_counter = 0
-            # Use local variable for detections within the loop iteration
-            current_detections = []
+            logging.info(f"Working mode thread '{threading.current_thread().name}' started.")
+            thread_local_frame_counter = 0
+            
+            is_file_source = (self.working_source_selector.currentText() == "Working video")
 
-            # Helper function to generate pixmap for debug views (avoids code repetition)
-            def _prepare_debug_pixmap(image_data, caption, label_widget):
-                if image_data is not None and image_data.size > 0:
-                    try:
-                        # Ensure it's 8-bit if needed (e.g., Canny edges)
-                        if image_data.dtype != np.uint8:
-                            image_data = image_data.astype(np.uint8)
-
-                        # Add caption overlay
-                        img_with_caption = self._overlay_caption(image_data, caption) # Assumes _overlay_caption exists in MainWindow
-
-                        # Get label dimensions (use defaults if not available yet)
-                        lbl_w = label_widget.width() if label_widget.width() > 0 else 320
-                        lbl_h = label_widget.height() if label_widget.height() > 0 else 180
-
-                        # Convert to QPixmap
-                        pixmap = self.frame_to_qpixmap(img_with_caption, lbl_w, lbl_h) # Assumes frame_to_qpixmap exists in MainWindow
-
-                        if not pixmap.isNull():
-                            return pixmap
-                        else:
-                            logging.warning(f"Failed to create pixmap for {caption}")
-                            return None
-                    except Exception as e_prep:
-                        logging.error(f"Error preparing pixmap for {caption}: {e_prep}")
-                        return None
-                else:
-                    # logging.debug(f"No valid image data for {caption}") # Optional debug
-                    return None
-
-
-            while not self._working_stop_flag: # Use the instance flag
-                ret, frame = video_capture.read()
-                if not ret or frame is None:
-                    logging.info("Video source ended or read failed.")
-                    break # Exit loop
-
+            while not self._working_stop_flag:
+                ret_thread, current_frame_thread = video_capture_thread.read()
+                if not ret_thread or current_frame_thread is None:
+                    if is_file_source:
+                        current_pos = video_capture_thread.get(cv2.CAP_PROP_POS_FRAMES)
+                        total_frames = video_capture_thread.get(cv2.CAP_PROP_FRAME_COUNT)
+                        #logging.debug(f"Video read failed/ended. Pos: {current_pos}, Total: {total_frames}")
+                        if total_frames > 0 and current_pos >= total_frames -1 : # Check if at the end
+                            logging.info("Video source ended. Rewinding.")
+                            video_capture_thread.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                            thread_local_frame_counter = 0 
+                            continue
+                        else: # Could be a read error not at the end, or empty video
+                            logging.warning(f"Video read failed but not at absolute end. (Pos:{current_pos}/{total_frames}). Trying to continue or stop if persistent.")
+                            # Add a small delay or a counter for consecutive failures if needed
+                            time.sleep(0.05) # Brief pause
+                            # If it's an empty video or persistent read error, might need to break
+                            if total_frames == 0 or (total_frames > 0 and current_pos >= total_frames):
+                                logging.error("Video seems to be empty or stuck at end. Stopping thread.")
+                                break
+                            continue # Attempt to read again
+                    else: # Camera stream issue
+                        logging.error("Failed to read frame from camera or camera disconnected. Stopping thread.")
+                        break # Exit loop for camera errors
+                
                 try:
-                    # --- Frame Processing ---
-                    if self._detector is None:
-                        logging.error("Object detector is not initialized. Stopping thread.")
+                    if self._detector is None: # Should be initialized before thread starts
+                        logging.error("Object detector is None in worker thread. Critical error. Stopping.")
                         break
 
-                    result = self._detector.process_frame(
-                        frame, frame_counter, working_area_mask=self.working_area_mask, mode="process"
+                    # Process the frame using the detector
+                    # self.working_area_mask and self.homography_matrix_to_mm are used by the detector internally
+                    # or passed to process_frame if its signature requires them.
+                    # Current ObjectDetector.process_frame takes working_area_mask.
+                    result_data = self._detector.process_frame(
+                        current_frame_thread, 
+                        thread_local_frame_counter, 
+                        working_area_mask=self.working_area_mask # Pass the confirmed mask
                     )
 
-                    display_image = None
-                    edges = None
-                    current_detections = [] # Reset detections for this frame
+                    # --- Handle processing result and update GUI ---
+                    # (This part is based on your original thread_func logic for emitting signals)
+                    display_image_gui = None
+                    edges_gui = None
+                    current_detections_list_gui = []
 
-                    if result is None or len(result) != 3:
-                        logging.warning(f"Frame {frame_counter}: process_frame returned invalid result.")
-                        display_image = undistort_frame(frame, var.CALIBRATION_FILE) # Show undistorted original
+                    if result_data is None or len(result_data) != 3:
+                        logging.warning(f"Frame {thread_local_frame_counter}: process_frame returned invalid result. Showing undistorted.")
+                        display_image_gui = undistort_frame(current_frame_thread, var.CALIBRATION_FILE)
                     else:
-                        edges, objects_overlayed, current_detections = result
-
-                        # --- Select Image for Main Display ---
-                        if self.display_overlay_search and self.last_overlay_frame is not None:
-                            display_image = self.last_overlay_frame
-                        else:
-                            display_image = objects_overlayed
-
-                    # --- Update Main Video Display (via Signal) ---
-                    if display_image is not None:
-                        label_w = self.working_video_label.width()
-                        label_h = self.working_video_label.height()
-                        if label_w > 0 and label_h > 0:
-                            main_pixmap = self.frame_to_qpixmap(display_image, label_w, label_h)
-                            if not main_pixmap.isNull():
-                                self.updateWorkingPixmapSignal.emit(main_pixmap)
-                        # else: logging.debug("Main label size zero") # Reduce log noise
-
-                    # --- Update Debug Views Below (via Signals) ---
-                    # Only process if the checkbox is checked (reduces overhead)
+                        edges_gui, objects_overlayed_gui, current_detections_list_gui = result_data
+                        # Logic for self.display_overlay_search if you have it
+                        display_image_gui = objects_overlayed_gui 
+                    
+                    # Update main video label
+                    if display_image_gui is not None:
+                        main_label_w = self.working_video_label.width()
+                        main_label_h = self.working_video_label.height()
+                        if main_label_w > 0 and main_label_h > 0:
+                            pixmap_main = self.frame_to_qpixmap(display_image_gui, main_label_w, main_label_h)
+                            if not pixmap_main.isNull():
+                                self.updateWorkingPixmapSignal.emit(pixmap_main)
+                    
+                    # Update debug views if enabled
                     if self.show_debug_views_checkbox.isChecked():
-                        # --- Prepare Canny Pixmap ---
-                        canny_pixmap = _prepare_debug_pixmap(edges, "Canny", self.canny_debug_label)
-                        if canny_pixmap:
-                            self.updateCannyPixmapSignal.emit(canny_pixmap)
+                        if edges_gui is not None:
+                            # _prepare_debug_pixmap is defined in MainWindow
+                            canny_pixmap = self._prepare_debug_pixmap(edges_gui, "Canny", self.canny_debug_label)
+                            if canny_pixmap: self.updateCannyPixmapSignal.emit(canny_pixmap)
+                        
+                        if edges_gui is not None and edges_gui.ndim == 2 and edges_gui.size > 0: # For contour view
+                            # ... (your contour drawing logic to create contours_img_color) ...
+                            contours_img_color_debug = np.zeros((edges_gui.shape[0], edges_gui.shape[1], 3), dtype=np.uint8)
+                            # ... (draw contours on contours_img_color_debug) ...
+                            contours_found_dbg, _ = cv2.findContours(edges_gui, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                            for c_dbg in contours_found_dbg:
+                                clr_dbg = (random.randint(50,255),random.randint(50,255),random.randint(50,255))
+                                cv2.drawContours(contours_img_color_debug, [c_dbg], -1, clr_dbg, -1)
+                                cv2.drawContours(contours_img_color_debug, [c_dbg], -1, (0,0,0), 1)
 
-                        # --- Prepare Contours Pixmap ---
-                        if edges is not None and edges.ndim == 2 and edges.size > 0:
-                            try:
-                                # Create colored contour image (needs grayscale edges)
-                                contours_img_color = np.zeros((edges.shape[0], edges.shape[1], 3), dtype=np.uint8)
-                                contours_found, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                                for cnt in contours_found:
-                                    color = (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
-                                    cv2.drawContours(contours_img_color, [cnt], -1, color, thickness=cv2.FILLED)
-                                    cv2.drawContours(contours_img_color, [cnt], -1, (0, 0, 0), thickness=1)
+                            contour_pixmap = self._prepare_debug_pixmap(contours_img_color_debug, "Contours", self.contour_debug_label)
+                            if contour_pixmap: self.updateContourPixmapSignal.emit(contour_pixmap)
 
-                                contour_pixmap = _prepare_debug_pixmap(contours_img_color, "Contours", self.contour_debug_label)
-                                if contour_pixmap:
-                                    self.updateContourPixmapSignal.emit(contour_pixmap)
-                            except Exception as e_dbg_contour:
-                                logging.error(f"Error preparing contour pixmap: {e_dbg_contour}")
-
-
-                    # --- MODBUS COMMUNICATION LOGIC ---
+                    # --- MODBUS Communication Logic (using mb_params_thread and current_detections_list_gui) ---
                     if self.modbus_checkbox.isChecked() and self.robot is not None and self.robot.connected:
+                        # ... (Your existing Modbus logic from the previous snippet, ensure it uses
+                        #      mb_params_thread and current_detections_list_gui correctly)
                         try:
-                            # 1. Read Request Flag
-                            request_flag_value = self.robot.read_request_flag(
-                                mb_params['req_addr'], mb_params['is_coil']
-                            )
+                            req_val = self.robot.read_request_flag(mb_params_thread['req_addr'], mb_params_thread['is_coil'])
+                            if req_val is not None and req_val != 0:
+                                # logging.info(f"PLC req data (Flag={req_val}). Frame {thread_local_frame_counter}")
+                                pkt_data = []; send_ok = False
+                                if current_detections_list_gui:
+                                    n_send = min(len(current_detections_list_gui), mb_params_thread['max_objs'])
+                                    pkt_data = [n_send]
+                                    for i in range(n_send):
+                                        d = current_detections_list_gui[i]
+                                        c_code = category_mapping.get(d.get('predicted_category', 'unknown'),0)
+                                        ctr_x,ctr_y = d.get('center',[0,0]); wd,ht = d.get('width',0),d.get('height',0)
+                                        agl,trk_id = d.get('angle',0),d.get('track_id',0)
+                                        obj_d = [int(trk_id),int(ctr_x*100),int(ctr_y*100),int(wd*100),int(ht*100),int(agl*100),int(c_code)]
+                                        if len(obj_d) != var.MODBUS_REGISTERS_PER_OBJECT:
+                                            logging.error(f"Modbus data len mismatch obj {i}. Abort."); pkt_data=None; break
+                                        pkt_data.extend(obj_d)
+                                else: pkt_data=[0] # No detections, send count 0
+                                if pkt_data:
+                                    # logging.info(f"Sending Modbus packet for {pkt_data[0]} objects.")
+                                    send_ok = self.robot.client.write_multiple_registers(mb_params_thread['num_obj_addr'], pkt_data)
+                                    if not send_ok: logging.error(f"Modbus write failed frame {thread_local_frame_counter}")
+                                if send_ok or (pkt_data and pkt_data[0]==0):
+                                    self.robot.reset_request_flag(mb_params_thread['req_addr'], mb_params_thread['is_coil'])
+                        except Exception as e_mb_loop:
+                            logging.error(f"Modbus comm error in loop frame {thread_local_frame_counter}: {e_mb_loop}", exc_info=True)
 
-                            # 2. Check if Flag is Set
-                            if request_flag_value is not None and request_flag_value != 0:
-                                logging.info(f"Frame {frame_counter}: PLC requested data (Flag={request_flag_value}). Preparing packet...")
+                    elif not self.modbus_checkbox.isChecked() and current_detections_list_gui:
+                        # Your non-Modbus print output for detections
+                        pass 
+                        # print(f"--- Frame {thread_local_frame_counter} Detections ---")
+                        # for d_item in current_detections_list_gui: # ...
 
-                                # 3. Prepare Packet
-                                packet_data = []
-                                send_success = False
+                    thread_local_frame_counter += 1
+                    time.sleep(0.005) # Small yield for CPU
 
-                                if current_detections:
-                                    num_to_send = min(len(current_detections), mb_params['max_objs'])
-                                    packet_data = [num_to_send]
+                except Exception as e_thread_loop_inner:
+                    logging.error(f"Error in worker thread main processing (Frame {thread_local_frame_counter}): {e_thread_loop_inner}", exc_info=True)
+                    # Potentially break or implement more robust error handling for the thread
+                    break # Exit thread on major processing error
 
-                                    for i in range(num_to_send):
-                                        det = current_detections[i]
-                                        category_code = category_mapping.get(det.get('predicted_category', 'unknown'), 0)
-                                        center_x, center_y = det.get('center', [0, 0])
-                                        width, height = det.get('width', 0), det.get('height', 0)
-                                        angle = det.get('angle', 0)
-                                        track_id = det.get('track_id', 0)
+            # --- Worker Thread Loop Finished ---
+            logging.info(f"Working mode thread '{threading.current_thread().name}' finished its loop.")
+            # The capture object (video_capture_thread) is managed by the main thread (start/stop_working_mode)
+            # So, no release here.
+            # Signal the main thread that this worker thread has completed its task or stopped.
+            # This is important if the thread stops on its own (e.g., camera error).
+            # self.thread_stopped_signal.emit() # Example: You'd need to define this signal
+            # For now, GUI updates are handled by stop_working_mode or if start fails.
+            # If the thread exits due to an error or video end (and not via _working_stop_flag),
+            # the stop_working_mode might not be called by user. GUI should reflect this.
+            # A simple way is to use QTimer from here to call a cleanup/UI update method.
+            QTimer.singleShot(0, self._handle_working_thread_completion)
 
-                                        object_data = [
-                                            int(track_id), int(center_x * 100), int(center_y * 100),
-                                            int(width * 100), int(height * 100), int(angle * 100),
-                                            int(category_code)
-                                        ]
-                                        if len(object_data) != var.MODBUS_REGISTERS_PER_OBJECT:
-                                            logging.error(f"Data mismatch obj {i}! Exp {var.MODBUS_REGISTERS_PER_OBJECT}, got {len(object_data)}. Aborting.")
-                                            packet_data = None; break
-                                        packet_data.extend(object_data)
-                                else:
-                                    packet_data = [0] # Send count 0 if no detections
-                                    logging.info(f"Frame {frame_counter}: No objects detected, preparing packet with count 0.")
 
-                                # 4. Send Packet
-                                if packet_data is not None:
-                                    logging.info(f"Frame {frame_counter}: Sending packet for {packet_data[0]} objects.")
-                                    send_success = self.robot.client.write_multiple_registers(
-                                        mb_params['num_obj_addr'], packet_data
-                                    )
-                                    if not send_success: logging.error(f"Frame {frame_counter}: Modbus write failed.")
-                                    else: logging.info(f"Frame {frame_counter}: Packet sent successfully.")
-
-                                # 5. Reset PLC Request Flag
-                                if send_success or (packet_data is not None and packet_data[0] == 0) :
-                                    logging.info(f"Frame {frame_counter}: Resetting PLC request flag.")
-                                    reset_success = self.robot.reset_request_flag(
-                                        mb_params['req_addr'], mb_params['is_coil']
-                                    )
-                                    if not reset_success: logging.warning(f"Frame {frame_counter}: Failed to reset PLC flag.")
-
-                            # else: # Optional log if flag isn't set
-                            #     logging.debug(f"Frame {frame_counter}: PLC flag not set or Modbus off.")
-
-                        except Exception as e_modbus:
-                            logging.error(f"Frame {frame_counter}: Error during Modbus comm: {e_modbus}", exc_info=True)
-
-                    # --- Non-Modbus Output ---
-                    elif not self.modbus_checkbox.isChecked() and current_detections:
-                        print(f"--- Frame {frame_counter} Detections ---")
-                        for d in current_detections:
-                            center = d.get('center', [0,0])
-                            print(f"  ID {d.get('track_id','N/A')} | Cat: {d.get('predicted_category','unk')} "
-                                f"| C: ({center[0]:.1f},{center[1]:.1f})mm "
-                                f"| Sz: {d.get('width',0):.1f}x{d.get('height',0):.1f}mm")
-
-                    frame_counter += 1
-                    time.sleep(0.005) # Yield CPU
-
-                except Exception as e_loop:
-                    logging.error(f"Error in working thread loop (Frame {frame_counter}): {e_loop}", exc_info=True)
-                    # self.showMessageSignal.emit("Thread Error", f"Critical error in processing loop:\n{e_loop}")
-                    break # Stop processing on major error
-
-            # --- Loop Finished ---
-            if video_capture: video_capture.release()
-            logging.info("Working mode thread finished. Video capture released.")
-            # Maybe signal main thread to update button states if stop wasn't called explicitly?
-            # self.threadStoppedSignal.emit() # Requires defining this signal
-        # --- Start the Thread ---
-        # Ensure modbus_params dictionary is created BEFORE this line in start_working_mode
-        self._working_thread = threading.Thread(target=thread_func, args=(cap, modbus_params), name="WorkingModeThread", daemon=True)
+        self._working_thread = threading.Thread(target=thread_func, args=(self.working_mode_capture, modbus_params), name="WorkingModeThread", daemon=True)
         self._working_thread.start()
         logging.info("Working mode thread initiated.")
-
+        if hasattr(self, 'setGatheringStatus'): self.setGatheringStatus("Working mode running.")
+        elif hasattr(self, 'status_label'): self.status_label.setText("Status: Working mode running.")
 
     def stop_working_mode(self):
-        """Signals the working mode thread to stop and updates UI."""
+        """
+        Signals the working mode thread to stop, waits for it to finish (with timeout),
+        releases video capture resources, and updates the UI.
+        """
+        logging.info("Attempting to stop working mode...")
+
         if self._working_thread is None or not self._working_thread.is_alive():
-             logging.info("Working mode is not running.")
-             # Ensure UI state is correct if stop is called mistakenly
-             self.working_start_button.setEnabled(True)
-             self.working_stop_button.setEnabled(False)
-             return
+            logging.info("Working mode is not running or thread already stopped.")
+            # Ensure UI state is correct even if stop is called mistakenly
+            self.working_start_button.setEnabled(True)
+            self.working_stop_button.setEnabled(False)
+            
+            # Clean up capture object if it somehow still exists (defensive coding)
+            if hasattr(self, 'working_mode_capture') and self.working_mode_capture is not None:
+                logging.debug("Releasing capture object in stop_working_mode (thread was not active).")
+                self.working_mode_capture.release()
+                self.working_mode_capture = None
+            
+            self.working_video_label.clear() # Clear video display
+            self.working_video_label.setText("Working mode is not active.")
+            if hasattr(self, 'canny_debug_label'): 
+                self.canny_debug_label.clear()
+                self.canny_debug_label.setText("Canny")
+            if hasattr(self, 'contour_debug_label'): 
+                self.contour_debug_label.clear()
+                self.contour_debug_label.setText("Contours")
+            return
 
-        logging.info("Working mode stop requested.")
+        # --- Signal the thread to stop ---
         self._working_stop_flag = True
-        # Wait briefly for the thread to finish
-        self._working_thread.join(timeout=1.0) # Wait up to 1 second
+        logging.info("Working mode stop flag set. Waiting for thread to finish...")
 
-        if self._working_thread.is_alive():
-             logging.warning("Working thread did not stop within the timeout.")
-             # Force stop? Not directly possible in Python threads.
+        # --- Wait for the thread to complete ---
+        if self._working_thread is not None: 
+            self._working_thread.join(timeout=2.0) # Wait up to 2 seconds
+
+            if self._working_thread.is_alive():
+                logging.warning("Working thread did not stop within the 2-second timeout. It might be stuck.")
+            else:
+                logging.info("Working thread has finished.")
+        
+        self._working_thread = None # Clear the thread reference
+
+        # --- Release Video Capture Resource ---
+        if hasattr(self, 'working_mode_capture') and self.working_mode_capture is not None:
+            logging.info("Releasing video capture for working mode.")
+            try:
+                self.working_mode_capture.release()
+            except Exception as e_release:
+                logging.error(f"Error releasing working_mode_capture: {e_release}")
+            self.working_mode_capture = None # Clear the reference
         else:
-             logging.info("Working thread stopped.")
+            logging.warning("working_mode_capture attribute not found or was None during stop.")
 
-        # Clean up and update UI regardless of join timeout
-        self._working_thread = None
+        # --- Update UI elements ---
         self.working_start_button.setEnabled(True)
         self.working_stop_button.setEnabled(False)
-        # Optional: Clear video label?
-        # self.working_video_label.clear()
-        # self.working_video_label.setText("Working mode stopped.")
+        
+        self.working_video_label.clear()
+        self.working_video_label.setText("Working mode stopped.")
+        
+        if hasattr(self, 'canny_debug_label'): 
+            self.canny_debug_label.clear()
+            self.canny_debug_label.setText("Canny")
+        if hasattr(self, 'contour_debug_label'):
+            self.contour_debug_label.clear()
+            self.contour_debug_label.setText("Contours")
+
+        logging.info("Working mode stopped successfully and UI updated.")
+
+    def _handle_working_thread_completion(self):
+        """
+        Called via QTimer when the working thread finishes its loop (either normally or due to error).
+        This ensures GUI updates are done in the main thread.
+        """
+        logging.debug("Handling working thread completion in main thread.")
+        # Check if the stop was user-initiated or if the thread stopped by itself
+        if not self._working_stop_flag: # Thread stopped on its own (e.g. error, video end for camera)
+            logging.warning("Working thread appears to have stopped unexpectedly (not by user action).")
+            # Call stop_working_mode to ensure proper cleanup and UI reset
+            # This will also handle releasing the capture if it's still open.
+            # Pass a flag or check inside stop_working_mode if it was an unexpected stop.
+            # For now, just call stop_working_mode.
+            if self._working_thread is not None and self._working_thread.is_alive():
+                 # This case should not happen if join was used in stop_working_mode,
+                 # but as a fallback if thread stops itself.
+                 self._working_stop_flag = True # Ensure flag is set
+                 self._working_thread.join(timeout=0.5)
+
+            self.stop_working_mode() # This will reset UI and release resources
+        else:
+            # If _working_stop_flag is True, it means stop_working_mode was likely called by the user,
+            # and it will handle the UI updates and resource release.
+            # We might not need to do much here, or just ensure the thread object is None.
+            logging.debug("Working thread completion handled; stop was likely user-initiated.")
+            if self._working_thread is not None and not self._working_thread.is_alive():
+                self._working_thread = None # Ensure reference is cleared
+
+
+    def stop_data_gathering_mode(self):
+        """
+        Signals the data gathering thread to stop, waits for it to finish (with timeout),
+        releases video capture resources, resets processor state, and updates the UI.
+        """
+        logging.info("Attempting to stop data gathering mode...")
+
+        if self._gather_thread is None or not self._gather_thread.is_alive():
+            logging.info("Data gathering mode is not running or thread already stopped.")
+            # Ensure UI state is correct even if stop is called mistakenly
+            if hasattr(self, 'gather_start_button'): self.gather_start_button.setEnabled(True)
+            if hasattr(self, 'gather_stop_button'): self.gather_stop_button.setEnabled(False)
+            self.handleEnableClassification(False) # Disable classification buttons
+            
+            # Clean up capture object if it somehow still exists
+            if hasattr(self, 'gather_mode_capture') and self.gather_mode_capture is not None:
+                logging.debug("Releasing gather_mode_capture in stop_data_gathering_mode (thread was not active).")
+                self.gather_mode_capture.release()
+                self.gather_mode_capture = None
+            
+            if hasattr(self, 'gather_video_label'): # Clear video display
+                self.gather_video_label.clear()
+                self.gather_video_label.setText("Data gathering is not active.")
+            if hasattr(self, 'gather_status_label'):
+                 self.gather_status_label.setText("Status: Idle.")
+            return
+
+        # --- Signal the thread to stop ---
+        self._gather_stop_flag = True
+        logging.info("Data gathering stop flag set. Waiting for thread to finish...")
+
+        # --- Reset processor state early if possible ---
+        # This helps if the thread is waiting on classification input from the processor.
+        if self._gather_processor is not None:
+            # Reset the target ID to stop waiting for classification input
+            # This helps the processor's loop in the thread to potentially exit sooner
+            # if it's stuck waiting for a classification that will no longer come.
+            self._gather_processor._current_target_track_id = None 
+            logging.info("Cleared current target ID in gather processor to facilitate clean stop.")
+            # Consider if a full self._gather_processor.reset_state() is needed here or after thread join.
+            # For now, just clearing the target ID. A full reset can happen after join.
+
+        # --- Wait for the thread to complete ---
+        if self._gather_thread is not None: # Check again
+            self._gather_thread.join(timeout=2.0) # Wait up to 2 seconds
+
+            if self._gather_thread.is_alive():
+                logging.warning("Data gathering thread did not stop within the 2-second timeout. It might be stuck.")
+            else:
+                logging.info("Data gathering thread has finished.")
+        
+        self._gather_thread = None # Clear the thread reference
+
+        # --- Release Video Capture Resource ---
+        if hasattr(self, 'gather_mode_capture') and self.gather_mode_capture is not None:
+            logging.info("Releasing video capture for data gathering mode.")
+            try:
+                self.gather_mode_capture.release()
+            except Exception as e_release_gather:
+                logging.error(f"Error releasing gather_mode_capture: {e_release_gather}")
+            self.gather_mode_capture = None # Clear the reference
+        else:
+            logging.warning("gather_mode_capture attribute not found or was None during stop.")
+
+        # --- Reset Processor State (if not done before join, or for full reset) ---
+        if self._gather_processor is not None:
+            logging.info("Resetting DataGatheringProcessor state after thread stop.")
+            self._gather_processor.reset_state() # Perform full reset
+            # self._gather_processor = None # Optionally clear processor instance if it's always re-created
+
+        # --- Update UI elements ---
+        if hasattr(self, 'gather_start_button'): self.gather_start_button.setEnabled(True)
+        if hasattr(self, 'gather_stop_button'): self.gather_stop_button.setEnabled(False)
+        
+        self.handleEnableClassification(False) # Ensure classification buttons are disabled
+
+        if hasattr(self, 'gather_video_label'):
+            self.gather_video_label.clear()
+            self.gather_video_label.setText("Data gathering stopped.")
+        
+        if hasattr(self, 'gather_status_label'):
+            self.setGatheringStatus("Stopped.") # Use the dedicated slot for status updates
+        
+        # Optional: Reset any other relevant state variables specific to data gathering mode
+        # self._gather_current_shape = "unknown"
+        # self._gather_current_color = "unknown"
+
+        logging.info("Data gathering mode stopped successfully and UI updated.")
 
     def confirm_working_area(self, overlay_frame):
         """
@@ -2156,26 +2401,18 @@ class MainWindow(QMainWindow):
              self.showMessageSignal.emit("Error", f"Error during working area detection:\n{e}")
              return False
 
-        if result is None:
+        if result is None or result[1] is None or result[2] is None:
             logging.warning("Working area detection failed or was rejected by user.")
             # Confirmation callback handles user rejection message/logging
             return False
         else:
-            overlay_frame, working_mask, conversion_factor = result
+            overlay_frame, working_mask, homography_matrix = result
             # Store results in MainWindow state
             self.working_area_mask = working_mask
+            self.homography_matrix_to_mm = homography_matrix
             self.last_overlay_frame = overlay_frame # Used for display toggle maybe
-            # Update detection_params directly (WorkingArea already does this, but be explicit)
-            self.detection_params["CONVERSION_FACTOR"] = conversion_factor
-            # Update the conversion factor slider/label in the GUI
-            if "CONVERSION_FACTOR" in self.param_widgets:
-                widgets = self.param_widgets["CONVERSION_FACTOR"]
-                widgets['label'].setText(f"{conversion_factor:.{widgets['decimals']}f}")
-                # Avoid division by zero if step is zero
-                step = widgets['step']
-                if step != 0:
-                     widgets['slider'].setValue(int(conversion_factor / step))
-            logging.info("Working area detected and confirmed.")
+
+            logging.info("Working area detected, confirmed and homography matrix obtained.")
             return True
 
 
@@ -2332,54 +2569,74 @@ class MainWindow(QMainWindow):
             # call the default implementation of the parent class.
             super().keyPressEvent(event)
 
-
     def start_data_gathering_mode(self):
-        """Starts the data gathering process, including Working Area definition."""
+        """
+        Starts the data gathering process:
+        1. Initializes video capture.
+        2. Loads calibration.
+        3. Attempts to find and confirm the working area and homography over several frames.
+        4. Initializes the DataGatheringProcessor.
+        5. Starts the background processing thread.
+        """
         if self._gather_thread is not None and self._gather_thread.is_alive():
             self.showMessageSignal.emit("Warning", "Data gathering is already running.")
             return
 
         logging.info("Attempting to start Data Gathering mode...")
+
+        # --- 0. Reset State for a new attempt ---
         self._gather_stop_flag = False
-        self.gather_start_button.setEnabled(False) # Disable start button early
-        # Don't enable stop button yet, wait until WA is confirmed
-        # self.gather_stop_button.setEnabled(True)
+        self._gather_processor = None # Reset processor
+        self.working_area_mask = None   # Reset from MainWindow state
+        self.homography_matrix_to_mm = None # Reset from MainWindow state
+
+        # If a previous capture object exists, release it first
+        if hasattr(self, 'gather_mode_capture') and self.gather_mode_capture is not None:
+            logging.debug("Releasing pre-existing gather_mode_capture before new start.")
+            self.gather_mode_capture.release()
+            self.gather_mode_capture = None
+            
+        self.gather_start_button.setEnabled(False)
+        self.gather_stop_button.setEnabled(False) # Keep stop button disabled until success
         self.handleEnableClassification(False)
         self.setGatheringStatus("Initializing...")
 
-        # --- 1. Select Video Source ---
+
+        # --- 1. Select and Initialize Video Source ---
         source_text = self.gather_source_selector.currentText()
         is_video_source = (source_text == "Working video")
-
-        cap = None
+        # self.gather_mode_capture will store the cv2.VideoCapture object
+        self.gather_mode_capture = None 
         source_name = ""
         try:
             if is_video_source:
                 video_path = self.gather_video_path_input.text()
                 if not video_path or not os.path.exists(video_path):
                      raise FileNotFoundError(f"Gathering video file not found or path empty: '{video_path}'")
-                cap = cv2.VideoCapture(video_path)
+                self.gather_mode_capture = cv2.VideoCapture(video_path)
                 source_name = video_path
             else: # Camera source
                 index_str = self.gather_camera_index_input.text()
-                if not index_str.isdigit(): raise ValueError("Invalid camera index: not a number")
+                if not index_str.strip().isdigit(): 
+                    raise ValueError("Invalid camera index: not a number.")
                 index = int(index_str)
-                if index < 0: raise ValueError("Invalid camera index: negative")
-                cap = cv2.VideoCapture(index)
+                if index < 0: 
+                    raise ValueError("Invalid camera index: must be non-negative.")
+                self.gather_mode_capture = cv2.VideoCapture(index)
                 source_name = f"Camera Index {index}"
 
-            if not cap or not cap.isOpened():
+            if not self.gather_mode_capture or not self.gather_mode_capture.isOpened():
+                self.gather_mode_capture = None # Ensure it's None if open failed
                 raise IOError(f"Failed to open video source: {source_name}")
             logging.info(f"Using gathering source: {source_name} (Is Video File: {is_video_source})")
 
-        except (FileNotFoundError, ValueError, IOError, Exception) as e:
-            logging.error(f"Error initializing gathering source: {e}", exc_info=True)
-            self.showMessageSignal.emit("Error", f"Error initializing video source:\n{e}")
-            if cap: cap.release()
-            # Reset UI state
+        except (FileNotFoundError, ValueError, IOError, Exception) as e_source:
+            logging.error(f"Error initializing gathering source: {e_source}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Error initializing video source:\n{e_source}")
+            if self.gather_mode_capture: self.gather_mode_capture.release()
+            self.gather_mode_capture = None
             self.gather_start_button.setEnabled(True)
-            # self.gather_stop_button.setEnabled(False) # Already false or not set
-            self.setGatheringStatus(f"Error: {e}")
+            self.setGatheringStatus(f"Error: {e_source}")
             return
 
         # --- 2. Load Calibration Data ---
@@ -2387,191 +2644,199 @@ class MainWindow(QMainWindow):
             if not os.path.exists(var.CALIBRATION_FILE):
                  raise FileNotFoundError(f"Calibration file not found: {var.CALIBRATION_FILE}")
             logging.info(f"Found calibration data file: {var.CALIBRATION_FILE}")
-        except Exception as e:
-            logging.error(f"Calibration file check failed: {e}", exc_info=True)
-            self.showMessageSignal.emit("Error", f"Calibration file error:\n{e}\nPlease run calibration.")
-            cap.release()
+        except Exception as e_calib:
+            logging.error(f"Calibration file check failed: {e_calib}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Calibration file error:\n{e_calib}\nPlease run calibration.")
+            if self.gather_mode_capture: self.gather_mode_capture.release()
+            self.gather_mode_capture = None
             self.gather_start_button.setEnabled(True)
-            # self.gather_stop_button.setEnabled(False)
             self.setGatheringStatus("Error: Calibration missing")
             return
 
-        # --- 3. Define and Confirm Working Area ---
-        # This section now includes reading the first frame and calling prepare_working_area
+        # --- 3. Define and Confirm Working Area & Homography (try multiple frames) ---
         self.setGatheringStatus("Detecting Working Area...")
-        QApplication.processEvents() # Update GUI status label immediately
+        QApplication.processEvents()
 
-        current_working_area_mask = None # Initialize mask variable
-        try:
-            ret, first_frame = cap.read()
-            if not ret or first_frame is None:
-                raise IOError("Cannot read the first frame for Working Area setup.")
+        confirmed_wa_and_homography = False
+        # Use a variable for max frames, e.g., from var.py or define here
+        max_frames_to_try_wa_gather = var.MAX_FRAMES_TO_FIND_WORKING_AREA 
+        frames_tried_wa_gather = 0
+        current_working_area_mask_local = None # Local var for the mask to pass to thread
 
-            # Undistort the frame using the calibration data
-            undistorted_first_frame = undistort_frame(first_frame, var.CALIBRATION_FILE)
-            if undistorted_first_frame is first_frame:
-                 logging.warning("Undistortion might have failed, using original frame for Working Area detection.")
+        while frames_tried_wa_gather < max_frames_to_try_wa_gather and not self._gather_stop_flag:
+            ret_wa, frame_wa = self.gather_mode_capture.read() # Read from the instance capture object
+            if not ret_wa or frame_wa is None:
+                logging.error("Failed to read frame for WA setup in gathering mode or video stream ended.")
+                break 
 
-            # Call the existing method that handles detection and user confirmation
-            # This method blocks the main thread until the user responds (using QEventLoop)
-            # It sets self.working_area_mask and self.detection_params["CONVERSION_FACTOR"] if successful
-            confirmed = self.prepare_working_area(undistorted_first_frame)
+            undistorted_frame_wa = undistort_frame(frame_wa, var.CALIBRATION_FILE)
+            
+            # prepare_working_area attempts to find WA and calls confirmation_callback.
+            # It sets self.working_area_mask and self.homography_matrix_to_mm if user confirms.
+            if self.prepare_working_area(undistorted_frame_wa): # Returns True if user confirmed a valid area
+                if self.homography_matrix_to_mm is not None: # Check if homography was actually set
+                    confirmed_wa_and_homography = True
+                    current_working_area_mask_local = self.working_area_mask # Get the confirmed mask
+                    logging.info(f"Working Area and Homography confirmed for gathering on frame {frames_tried_wa_gather + 1}.")
+                    break # Success, exit loop
+                else:
+                    logging.warning(f"prepare_working_area True, but homography_matrix_to_mm is None on frame {frames_tried_wa_gather + 1}.")
+            
+            frames_tried_wa_gather += 1
+            logging.debug(f"WA/Homography not confirmed for gathering on frame {frames_tried_wa_gather}. Trying next...")
+            QApplication.processEvents() 
+            time.sleep(0.05) # Small delay
 
-            if not confirmed:
-                # User cancelled, or detection failed
-                logging.warning("Working Area definition/confirmation failed or was cancelled by user.")
-                self.showMessageSignal.emit("Info", "Working Area definition cancelled or failed.")
-                cap.release()
-                self.gather_start_button.setEnabled(True) # Re-enable start
-                # self.gather_stop_button.setEnabled(False) # Should still be false
-                self.setGatheringStatus("Idle - Working Area not set.")
-                return # Stop the start process here
-            else:
-                # Confirmation successful! The mask is stored in self.working_area_mask
-                current_working_area_mask = self.working_area_mask
-                logging.info("Working Area definition confirmed by user.")
-                self.setGatheringStatus("Working Area Confirmed. Initializing Processor...")
-                QApplication.processEvents() # Update status
-
-        except Exception as e_wa:
-             logging.error(f"Error during Working Area setup: {e_wa}", exc_info=True)
-             self.showMessageSignal.emit("Error", f"Working Area setup failed:\n{e_wa}")
-             cap.release()
-             self.gather_start_button.setEnabled(True)
-             # self.gather_stop_button.setEnabled(False)
-             self.setGatheringStatus("Error during WA setup.")
-             return
-        # --- End of Working Area Definition ---
-
+        if not confirmed_wa_and_homography:
+            logging.warning(f"WA/Homography for gathering not found or confirmed after {frames_tried_wa_gather} frames or process stopped.")
+            self.showMessageSignal.emit("Info", "Could not define Working Area / Homography for data gathering.")
+            if self.gather_mode_capture: self.gather_mode_capture.release()
+            self.gather_mode_capture = None
+            self.gather_start_button.setEnabled(True)
+            self.setGatheringStatus("Idle - WA/Homography not set.")
+            return
+        
+        # --- If successful up to here, enable stop button ---
+        self.gather_stop_button.setEnabled(True)
+        self.setGatheringStatus("Working Area Confirmed. Initializing Processor...")
+        QApplication.processEvents()
 
         # --- 4. Initialize Data Gathering Processor ---
-        # This part only runs if Working Area was confirmed successfully
         try:
-            # Define safe callback functions using lambda to emit signals
-            def _safe_request_callback(target_id, frame):
-                if frame is not None:
-                    label_w = self.gather_video_label.width(); label_h = self.gather_video_label.height()
+            def _safe_request_callback(target_id, frame_for_gui):
+                if frame_for_gui is not None:
+                    label_w = self.gather_video_label.width()
+                    label_h = self.gather_video_label.height()
                     if label_w > 0 and label_h > 0:
-                        pixmap = self.frame_to_qpixmap(frame, label_w, label_h)
+                        pixmap = self.frame_to_qpixmap(frame_for_gui, label_w, label_h)
                         if isinstance(pixmap, QPixmap) and not pixmap.isNull():
                             self.requestClassificationSignal.emit(target_id, pixmap)
             def _safe_status_callback(msg: str): self.updateGatheringStatusSignal.emit(str(msg))
 
             self._gather_processor = DataGatheringProcessor(
-                detection_params=self.detection_params, # Use current params (incl. CONVERSION_FACTOR from WA)
+                detection_params=self.detection_params,
                 request_classification_callback=_safe_request_callback,
-                update_status_callback=_safe_status_callback
+                update_status_callback=_safe_status_callback,
+                homography_matrix=self.homography_matrix_to_mm # Pass the obtained homography
             )
             self._gather_processor.reset_state()
-            logging.info("DataGatheringProcessor initialized successfully.")
-        except Exception as e:
-            logging.error(f"Failed to initialize DataGatheringProcessor: {e}", exc_info=True)
-            self.showMessageSignal.emit("Error", f"Failed to initialize Processor:\n{e}")
-            cap.release()
+            logging.info("DataGatheringProcessor initialized successfully with homography matrix.")
+        except Exception as e_proc_init:
+            logging.error(f"Failed to initialize DataGatheringProcessor: {e_proc_init}", exc_info=True)
+            self.showMessageSignal.emit("Error", f"Failed to initialize Processor:\n{e_proc_init}")
+            if self.gather_mode_capture: self.gather_mode_capture.release()
+            self.gather_mode_capture = None
             self.gather_start_button.setEnabled(True)
-            # self.gather_stop_button.setEnabled(False)
+            self.gather_stop_button.setEnabled(False)
             self.setGatheringStatus("Error: Processor init failed")
             return
 
         # --- 5. Define and Start Worker Thread ---
-        # (Thread function definition remains the same as previous step)
-        def thread_func_gather(video_capture, stop_flag_getter, processor, working_area_mask, is_video):
-            # ... (Worker thread code with looping logic remains IDENTICAL) ...
-            thread_name = threading.current_thread().name
-            logging.info(f"{thread_name}: Thread started. Source is video file: {is_video}")
-            frame_counter = 0
-            last_good_frame = None
+        # The thread_func_gather should be the one you already have, which handles
+        # reading from video_capture, calling processor.process_frame, and emitting GUI signals.
+        # Ensure it uses the passed 'wa_mask' (which is current_working_area_mask_local).
+        # Also ensure it handles video looping for 'is_video_file'.
 
-            while not stop_flag_getter():
-                ret, frame = video_capture.read()
-                if not ret:
-                    if is_video:
-                        success_reset = video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                        if not success_reset: break
-                        frame_counter = 0
-                        continue
-                    else: break
+        # Re-pasting the thread_func_gather structure for clarity and consistency
+        def thread_func_gather(video_capture_thread, stop_flag_getter_thread, processor_thread, wa_mask_thread, is_video_file_thread):
+            thread_name = threading.current_thread().name
+            logging.info(f"{thread_name}: Data Gather Thread started. Source is video file: {is_video_file_thread}")
+            thread_local_frame_counter = 0
+            last_good_frame_thread = None
+
+            while not stop_flag_getter_thread():
+                ret_thread, current_frame_thread = video_capture_thread.read()
+                if not ret_thread or current_frame_thread is None:
+                    if is_video_file_thread:
+                        current_pos = video_capture_thread.get(cv2.CAP_PROP_POS_FRAMES)
+                        total_frames = video_capture_thread.get(cv2.CAP_PROP_FRAME_COUNT)
+                        if total_frames > 0 and current_pos >= total_frames -1 :
+                            logging.info(f"{thread_name}: Video ended, rewinding.")
+                            video_capture_thread.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                            thread_local_frame_counter = 0
+                            last_good_frame_thread = None
+                            continue
+                        else:
+                            logging.warning(f"{thread_name}: Video read failed but not at end (Pos:{current_pos}/{total_frames}). Stopping.")
+                            break 
+                    else:
+                        logging.error(f"{thread_name}: Camera stream read failed. Stopping.")
+                        break
+                
                 try:
-                    if processor is None: break
+                    if processor_thread is None:
+                        logging.error(f"{thread_name}: Gather processor is None. Stopping.")
+                        break
             
-                    overlay_frame = processor.process_frame(frame, frame_counter, working_area_mask=current_working_area_mask)
-                    display_frame = overlay_frame if overlay_frame is not None else last_good_frame
+                    overlay_output_frame = processor_thread.process_frame(
+                        current_frame_thread, 
+                        thread_local_frame_counter, 
+                        working_area_mask=wa_mask_thread # Use the passed mask
+                    )
                     
-                    if display_frame is not None:
-                        if overlay_frame is not None: last_good_frame = display_frame
-                        label_w = self.gather_video_label.width(); label_h = self.gather_video_label.height()
+                    display_output_frame = overlay_output_frame
+                    if display_output_frame is None and last_good_frame_thread is not None:
+                        display_output_frame = last_good_frame_thread
+                    elif display_output_frame is None and last_good_frame_thread is None:
+                        # Fallback to undistorted current frame if processing fails from start
+                        display_output_frame = undistort_frame(current_frame_thread, self.calibration_file) 
                         
-                        #if label_w > 0 and label_h > 0:
-                            #pixmap = self.frame_to_qpixmap(display_frame, label_w, label_h)
-                            #if isinstance(pixmap, QPixmap) and not pixmap.isNull(): self.updateGatheringPixmapSignal.emit(pixmap)
-                        if frame_counter % 1 == 0: 
-                            if hasattr(self, 'gather_video_label'):
-                                label_w = self.gather_video_label.width(); label_h = self.gather_video_label.height()
-                                if label_w > 0 and label_h > 0:
-                                    pixmap = self.frame_to_qpixmap(display_frame, label_w, label_h)
-                                    if isinstance(pixmap, QPixmap) and not pixmap.isNull():
-                                        self.updateGatheringPixmapSignal.emit(pixmap)
-                    frame_counter += 1
-                    time.sleep(0.050)
-                except Exception as e_loop:
-                    logging.error(f"{thread_name}: Error in loop (Frame {frame_counter}): {e_loop}", exc_info=True)
-                    _safe_status_callback(f"Runtime Error: {e_loop}")
+                    if display_output_frame is not None:
+                        if overlay_output_frame is not None: # Update last good frame only if processing was successful
+                             last_good_frame_thread = display_output_frame
+                        
+                        if hasattr(self, 'gather_video_label'):
+                            label_w_gui = self.gather_video_label.width()
+                            label_h_gui = self.gather_video_label.height()
+                            if label_w_gui > 0 and label_h_gui > 0:
+                                pixmap_gui = self.frame_to_qpixmap(display_output_frame, label_w_gui, label_h_gui)
+                                if isinstance(pixmap_gui, QPixmap) and not pixmap_gui.isNull():
+                                    self.updateGatheringPixmapSignal.emit(pixmap_gui)
+                    
+                    thread_local_frame_counter += 1
+                    time.sleep(0.03) 
+                except Exception as e_loop_gather:
+                    logging.error(f"{thread_name}: Error in gather loop (Frame {thread_local_frame_counter}): {e_loop_gather}", exc_info=True)
+                    if hasattr(processor_thread, 'update_status_callback') and callable(processor_thread.update_status_callback):
+                         QTimer.singleShot(0, lambda: processor_thread.update_status_callback(f"Runtime Error"))
                     time.sleep(0.5)
 
-            if video_capture: video_capture.release(); logging.info(f"{thread_name}: Capture released.")
-            logging.info(f"{thread_name}: Thread finished.")
-            QTimer.singleShot(50, lambda: self.gather_start_button.setEnabled(True))
-            QTimer.singleShot(50, lambda: self.gather_stop_button.setEnabled(False))
-            QTimer.singleShot(50, lambda: self.handleEnableClassification(False))
-            QTimer.singleShot(50, lambda: self.setGatheringStatus("Stopped."))
-        # -----------------------------------------------------------------
+            # --- Thread Loop Finished ---
+            logging.info(f"{thread_name}: Data Gather Thread finished its loop.")
+            # Capture is managed by start/stop_data_gathering_mode
+            QTimer.singleShot(0, self._handle_gather_thread_completion)
 
-        # --- Start the Thread ---
-        # Pass the confirmed 'current_working_area_mask' to the thread function
+
         self._gather_thread = threading.Thread(
             target=thread_func_gather,
-            args=(cap, lambda: self._gather_stop_flag, self._gather_processor, current_working_area_mask, is_video_source), # Pass the mask here
+            args=(self.gather_mode_capture, lambda: self._gather_stop_flag, self._gather_processor, current_working_area_mask_local, is_video_source),
             name="DataGatherThread",
-            daemon=True)
+            daemon=True
+        )
         self._gather_thread.start()
-
-        # Enable the stop button only after the thread starts successfully
-        self.gather_stop_button.setEnabled(True)
+        
+        # self.gather_stop_button.setEnabled(True); # Already enabled after WA confirmation
         logging.info("Data gathering thread initiated.")
         self.setGatheringStatus("Running...")
 
 
-
-    def stop_data_gathering_mode(self):
-        """Signals the data gathering thread to stop and resets processor state."""
-        # Check if the thread exists and is running
-        if self._gather_thread is None or not self._gather_thread.is_alive():
-            logging.info("Data gathering is not running or thread object missing.")
-            if hasattr(self, 'gather_start_button'): self.gather_start_button.setEnabled(True)
-            if hasattr(self, 'gather_stop_button'): self.gather_stop_button.setEnabled(False)
-            self.handleEnableClassification(False)
-            return
-
-        logging.info("Data gathering stop requested.")
-        self._gather_stop_flag = True # Signal the thread's loop to exit
-
-        # --- NEW: Reset processor state immediately ---
-        if self._gather_processor is not None:
-            # Reset the target ID to stop waiting for classification input
-            self._gather_processor._current_target_track_id = None
-            # Optionally, clear the queue too? Might prevent last-second requests.
-            # self._gather_processor._object_queue.clear()
-            # self._gather_processor._pending_classification_data.clear()
-            # Maybe call the processor's reset method if it's safe in this context?
-            # self._gather_processor.reset_state() # Be careful if reset_state does too much
-            logging.info("Cleared current target ID in processor to allow clean stop.")
-        # --- End of NEW block ---
-
-        # Update GUI immediately
-        self.gather_stop_button.setEnabled(False) # Prevent multiple clicks
-        self.handleEnableClassification(False) # Disable classification during stop
-        self.setGatheringStatus("Stopping...")
-
+    def _handle_gather_thread_completion(self):
+        """
+        Called via QTimer when the data gathering thread finishes its loop.
+        Ensures GUI updates are done in the main thread.
+        """
+        logging.debug("Handling gather thread completion in main thread.")
+        if not self._gather_stop_flag: # Thread stopped on its own
+            logging.warning("Data gathering thread appears to have stopped unexpectedly.")
+            # Call stop_data_gathering_mode to ensure proper cleanup and UI reset
+            if self._gather_thread is not None and self._gather_thread.is_alive():
+                 self._gather_stop_flag = True
+                 self._gather_thread.join(timeout=0.5)
+            self.stop_data_gathering_mode() 
+        else:
+            logging.debug("Gather thread completion handled; stop was likely user-initiated.")
+            if self._gather_thread is not None and not self._gather_thread.is_alive():
+                self._gather_thread = None
 
 
     # =========================================================================

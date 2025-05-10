@@ -29,22 +29,26 @@ def undistort_frame(frame, calibration_file):
     return frame
 
 
+
 class WorkingArea:
-    def __init__(self, 
+    def __init__(self,
                  detection_params,
-                 calibration_file=var.CALIBRATION_FILE, 
+                 calibration_file=var.CALIBRATION_FILE,
                  confirmation_callback=None,
                  parent=None):
         self.detection_params = detection_params
         self.calibration_file = calibration_file
         self.confirmation_callback = confirmation_callback
         self.parent = parent
+        # Add a place to store the homography matrix if needed within this class instance,
+        # though it's better to return it and store it in MainWindow.
+        self.homography_matrix = None
 
     def objectDetection(self, frame):
-        print("[DEBUG] Starting objectDetection...")
+        print("[DEBUG] Starting objectDetection for Working Area...")
         corrected_frame = undistort_frame(frame, self.calibration_file)
         print("[DEBUG] Undistortion completed")
-        # add
+
         gray = cv2.cvtColor(corrected_frame, cv2.COLOR_BGR2GRAY)
         blur_kernel = self.detection_params.get("BLUR_KERNEL", 5)
         blur = cv2.GaussianBlur(gray, (blur_kernel, blur_kernel), 0)
@@ -59,40 +63,107 @@ class WorkingArea:
         print(f"[DEBUG] {len(contours)} contours found")
 
         frame_height, frame_width = corrected_frame.shape[:2]
-        min_ratio = var.WORKING_AREA_MIN_SIZE_RATIO
-        max_ratio = var.WORKING_AREA_MAX_SIZE_RATIO
+        # Adjust these ratios if needed, they now apply to the contour area
+        # to find a candidate for the A4 sheet.
+        min_area_ratio_for_A4 = 0.1 # Example: A4 sheet should occupy at least 10% of frame area
+        max_area_ratio_for_A4 = 0.99 # Example: And no more than 80%
+        min_contour_area = frame_height * frame_width * min_area_ratio_for_A4
+        max_contour_area = frame_height * frame_width * max_area_ratio_for_A4
+
+
+        # Helper function to order points: tl, tr, br, bl
+        def order_points(pts):
+            rect = np.zeros((4, 2), dtype="float32")
+            s = pts.sum(axis=1)
+            rect[0] = pts[np.argmin(s)]
+            rect[2] = pts[np.argmax(s)]
+            diff = np.diff(pts, axis=1)
+            rect[1] = pts[np.argmin(diff)]
+            rect[3] = pts[np.argmax(diff)]
+            return rect
 
         for cnt in contours:
-            if cv2.contourArea(cnt) < 1:
-                continue
-            rect = cv2.minAreaRect(cnt)
-            (cx, cy), (width, height), angle = rect
-            short_side, long_side = sorted([width, height])
-            short_ratio = short_side / min(frame_width, frame_height)
-            long_ratio = long_side / max(frame_width, frame_height)
-            print(f"[DEBUG] Found: short={short_side:.1f} ({short_ratio:.2f}), long={long_side:.1f} ({long_ratio:.2f})")
+            contour_area = cv2.contourArea(cnt)
+            if not (min_contour_area <= contour_area <= max_contour_area):
+                continue # Filter by overall area first
 
-            if (min_ratio <= short_ratio <= max_ratio and min_ratio <= long_ratio <= max_ratio):
-                print("[DEBUG] ✅ Candidate passed ratio check")
-                box = cv2.boxPoints(rect).astype(np.int32)
-                workArea_fr = corrected_frame.copy()
-                cv2.drawContours(workArea_fr, [box], 0, (0, 0, 255), 2)
+            epsilon = 0.02 * cv2.arcLength(cnt, True) # Epsilon for approxPolyDP
+            approx_polygon = cv2.approxPolyDP(cnt, epsilon, True)
 
-                user_confirmed = self.confirmation_callback(workArea_fr) if self.confirmation_callback else True
+            if len(approx_polygon) == 4:
+                print("[DEBUG] Found a 4-sided polygon candidate for A4 sheet.")
+                
+                # Order the points of the polygon: top-left, top-right, bottom-right, bottom-left
+                src_points_px = order_points(approx_polygon.reshape(4, 2))
+
+                # Define the destination points corresponding to the A4 sheet corners in millimeters
+                # We need to decide if the A4 is portrait or landscape in the destination.
+                # Let's assume we want to map it to a "portrait" orientation in mm.
+                # The order of dst_points must match the order of src_points_px (tl, tr, br, bl)
+                dst_points_mm = np.array([
+                    [0, 0],                            # Top-left
+                    [var.A4_WIDTH_MM -1, 0],           # Top-right
+                    [var.A4_WIDTH_MM -1, var.A4_HEIGHT_MM -1], # Bottom-right
+                    [0, var.A4_HEIGHT_MM -1]           # Bottom-left
+                ], dtype="float32")
+                
+                # To handle potential landscape orientation of the detected A4 sheet in the image:
+                # Check aspect ratio of the detected polygon in pixels
+                # (this is a simplified check, more robust would be to check side lengths)
+                poly_rect_px = cv2.boundingRect(approx_polygon) # x, y, w, h of non-rotated bounding box
+                _, _, w_px, h_px = poly_rect_px
+                
+                # If detected polygon is wider than tall, assume it's landscape in image
+                # and adjust dst_points_mm accordingly if we want to map it consistently.
+                # Or, more robustly, calculate the lengths of the sides of src_points_px
+                side1_len_px = np.linalg.norm(src_points_px[0] - src_points_px[1]) # Top side
+                side2_len_px = np.linalg.norm(src_points_px[1] - src_points_px[2]) # Right side
+
+                # If the detected "width" (side1_len_px) is longer than "height" (side2_len_px),
+                # it means the A4 sheet is likely landscape in the image.
+                # We then map its longer dimension to A4_HEIGHT_MM and shorter to A4_WIDTH_MM.
+                if side1_len_px > side2_len_px: # Detected as landscape
+                    print("[DEBUG] Detected A4 sheet appears landscape in image. Adjusting dst_points_mm.")
+                    dst_points_mm_adjusted = np.array([
+                        [0, 0],                                 # Top-left
+                        [var.A4_HEIGHT_MM - 1, 0],              # Top-right (longer side)
+                        [var.A4_HEIGHT_MM - 1, var.A4_WIDTH_MM - 1], # Bottom-right
+                        [0, var.A4_WIDTH_MM - 1]                # Bottom-left (shorter side)
+                    ], dtype="float32")
+                    # Compute homography: pixels to millimeters
+                    homography_matrix, status = cv2.findHomography(src_points_px, dst_points_mm_adjusted)
+                else: # Detected as portrait or square-ish
+                    print("[DEBUG] Detected A4 sheet appears portrait or square in image.")
+                    # Compute homography: pixels to millimeters
+                    homography_matrix, status = cv2.findHomography(src_points_px, dst_points_mm)
+
+                if homography_matrix is None:
+                    print("[WARNING] Could not compute homography matrix. Skipping this candidate.")
+                    continue
+
+                # Prepare frame for confirmation
+                workArea_fr_confirm = corrected_frame.copy()
+                cv2.drawContours(workArea_fr_confirm, [approx_polygon], 0, (0, 255, 0), 2) # Green polygon
+
+                # Show confirmation dialog
+                user_confirmed = self.confirmation_callback(workArea_fr_confirm) if self.confirmation_callback else True
+                
                 if user_confirmed:
                     working_mask = np.zeros(corrected_frame.shape[:2], dtype="uint8")
-                    cv2.drawContours(working_mask, [box], 0, 255, -1)
-                    conversion_factor = var.REFERENCE_OBJECT_WIDTH_MM / short_side
-                    self.detection_params["CONVERSION_FACTOR"] = conversion_factor
-                    print("[DEBUG] ✅ Returning confirmed working area")
-                    return workArea_fr, working_mask, conversion_factor
+                    cv2.drawContours(working_mask, [approx_polygon], 0, 255, -1)
+                    
+                    self.homography_matrix = homography_matrix # Store if needed here, but better to return
+                    print("[DEBUG] ✅ Returning confirmed working area mask and homography matrix.")
+                    # Return: overlay_frame_for_confirmation, mask, homography_matrix
+                    return workArea_fr_confirm, working_mask, homography_matrix
                 else:
                     print("[DEBUG] User rejected candidate; trying next...")
-        print("No candidate working area found within area constraints.")
-        return None
+        
+        print("[WARNING] No suitable 4-sided polygon for A4 sheet found or confirmed.")
+        return None, None, None # Return None for all if no area is confirmed
 
 class ObjectDetector:
-    def __init__(self, identification_config_path=None, detection_params=None, confirmation_callback=None, parent=None):
+    def __init__(self, identification_config_path=None, detection_params=None, confirmation_callback=None, parent=None, homography_matrix=None):
         # confirmation_callback and parent are not used within ObjectDetector itself based on current usage
         # self.confirmation_callback = confirmation_callback
         # self.parent = parent
@@ -101,10 +172,13 @@ class ObjectDetector:
         self.tracks = []
         self.IDENTIFICATION_CONFIG = {}
         self.features_list = []
-        self.mask = None # Mask loaded from config (if any)
+        #self.mask = None # Mask loaded from config (if any)
         self.detection_params = detection_params or {}
         self.calibration_file = var.CALIBRATION_FILE
         self.MAX_TRACK_LOST_FRAMES = var.MAX_LOST_FRAMES # Use variable
+        self.homography_matrix_to_mm = homography_matrix # Store the matrix
+        if self.homography_matrix_to_mm is None:
+            print("[WARNING] ObjectDetector initialized without a homography matrix. Measurements will be in pixels or inaccurate.")
         self.load_identification_config(identification_config_path) # Renamed method
 
     def load_identification_config(self, config_path=None): # Renamed method
@@ -214,58 +288,118 @@ class ObjectDetector:
         # --- 5. Process Valid Contours ---
         detections = []
         processed_centers = [] # Keep track of centers of processed objects this frame to avoid duplicates if needed
-        conversion_factor = self.detection_params.get("CONVERSION_FACTOR", 1.0)
-        if conversion_factor <= 0:
-            print("[ERROR] Invalid CONVERSION_FACTOR (<= 0). Using 1.0.")
-            conversion_factor = 1.0
 
         for contour in valid_contours:
             try:
-                rect = cv2.minAreaRect(contour)
-                center_px = self.get_center(rect) # Center in pixels
-                (width_px, height_px), angle = rect[1], rect[2]
+                rect_px = cv2.minAreaRect(contour) # This is still in pixels
+                center_px_tuple = self.get_center(rect_px) # (x_px, y_px)
+                (width_px, height_px), angle_deg = rect_px[1], rect_px[2]
 
-                # Optional: Check if center is too close to already processed one (simple overlap check)
-                # is_duplicate = False
-                # for pc in processed_centers:
-                #     if np.linalg.norm(np.array(center_px) - np.array(pc)) < 10: # Threshold in pixels
-                #         is_duplicate = True
-                #         break
-                # if is_duplicate:
-                #     continue
+
 
                 # Calculate features
-                features = self.compute_shape_features(contour, rect)
+                features = self.compute_shape_features(contour, rect_px)
                 avg_color = self.compute_average_color(corrected_frame, contour)
                 hu_norm = np.linalg.norm(np.array(features["hu_moments"]))
                 avg_color_val = np.mean(avg_color) # Average intensity across BGR
 
-                # Convert pixel values to mm
-                center_mm = (center_px[0] * conversion_factor, center_px[1] * conversion_factor)
-                width_mm = width_px * conversion_factor
-                height_mm = height_px * conversion_factor
-                area_mm2 = features["area"] * (conversion_factor ** 2)
-                perimeter_mm = features["perimeter"] * conversion_factor
-                avg_defect_depth_mm = features["avg_defect_depth"] * conversion_factor
-                aspect_ratio = width_px / height_px if height_px != 0 else 0
+# --- Transform key points to millimeters using homography ---
+                center_mm = (0,0)
+                width_mm = 0
+                height_mm = 0
+                area_mm2 = 0
+                perimeter_mm = 0 # This will be harder to transform directly, better to calculate from transformed points.
+                avg_defect_depth_mm = 0 # Same as perimeter
+
+                if self.homography_matrix_to_mm is not None:
+                    # Transform center point
+                    center_px_arr = np.array([[center_px_tuple]], dtype="float32") # Needs to be [[[x,y]]] for perspectiveTransform
+                    transformed_center_arr = cv2.perspectiveTransform(center_px_arr, self.homography_matrix_to_mm)
+                    if transformed_center_arr is not None and transformed_center_arr.size > 0:
+                        center_mm = (transformed_center_arr[0][0][0], transformed_center_arr[0][0][1])
+                    
+                    # To get width_mm and height_mm accurately, transform the box points
+                    box_points_px = cv2.boxPoints(rect_px) # 4 corner points of the rotated rect in pixels
+                    
+                    # Ensure box_points_px is in the correct shape for perspectiveTransform: (N, 1, 2)
+                    box_points_px_reshaped = box_points_px.reshape(-1, 1, 2).astype(np.float32)
+                    
+                    transformed_box_points_mm_arr = cv2.perspectiveTransform(box_points_px_reshaped, self.homography_matrix_to_mm)
+
+                    if transformed_box_points_mm_arr is not None and len(transformed_box_points_mm_arr) == 4:
+                        # Calculate distances between transformed points to get width_mm and height_mm
+                        # Points are typically tl, tr, br, bl (or a rotation) after boxPoints
+                        # Let's calculate lengths of two adjacent sides of the transformed quadrilateral
+                        side1_mm = np.linalg.norm(transformed_box_points_mm_arr[0][0] - transformed_box_points_mm_arr[1][0])
+                        side2_mm = np.linalg.norm(transformed_box_points_mm_arr[1][0] - transformed_box_points_mm_arr[2][0])
+                        
+                        # Assign width and height. Note: `angle_deg` from minAreaRect refers to pixel-space rotation.
+                        # The concept of "width" and "height" might be relative to the object's orientation in mm space.
+                        # For simplicity, we can sort them if `angle_deg` is not directly transferable.
+                        # However, width_px and height_px from rect_px were already sorted by minAreaRect if angle was > 45 or < -45.
+                        # Let's assume the order corresponds, or you might need a more robust way to define which is width/height
+                        # if the object is significantly rotated in the mm-plane.
+                        # For now, let's use the pixel-derived width/height and scale them by an average factor from box points,
+                        # or directly use side1_mm, side2_mm. Using side1_mm and side2_mm is more accurate.
+                        
+                        # We need to decide if width_px corresponded to side1_mm or side2_mm.
+                        # A simple way: assign them based on which pixel dimension was larger.
+                        if width_px >= height_px: # Assuming width_px was the longer side from minAreaRect
+                            width_mm = max(side1_mm, side2_mm)
+                            height_mm = min(side1_mm, side2_mm)
+                        else:
+                            width_mm = min(side1_mm, side2_mm)
+                            height_mm = max(side1_mm, side2_mm)
+
+                        # Area in mm^2 can be calculated from the transformed box points (e.g., shoelace formula or cv2.contourArea)
+                        area_mm2 = cv2.contourArea(transformed_box_points_mm_arr)
+                        # Perimeter in mm
+                        perimeter_mm = cv2.arcLength(transformed_box_points_mm_arr.astype(np.float32), closed=True)
+
+                    # Features like avg_defect_depth would also need their defining points transformed
+                    # For now, let's keep avg_defect_depth calculation in pixel space and then apply an *average* scale,
+                    # or transform the defect points if crucial. Let's scale for now.
+                    # This is less accurate than transforming points.
+                    pixel_features = self.compute_shape_features(contour, rect_px) # rect_px is needed here
+                    
+                    # An approximate scale for defect depth
+                    # This is a simplification; ideally, you'd transform defect points.
+                    if width_px > 0 :
+                        avg_scale_for_defects = width_mm / width_px
+                        avg_defect_depth_mm = pixel_features["avg_defect_depth"] * avg_scale_for_defects
+                    else:
+                        avg_defect_depth_mm = 0
+
+
+                else: # Fallback if no homography matrix
+                    print("[WARNING] No homography matrix available, using pixel values for measurements.")
+                    center_mm = center_px_tuple # Effectively pixels
+                    width_mm = width_px
+                    height_mm = height_px
+                    pixel_features = self.compute_shape_features(contour, rect_px)
+                    area_mm2 = pixel_features["area"] # pixels^2
+                    perimeter_mm = pixel_features["perimeter"] # pixels
+                    avg_defect_depth_mm = pixel_features["avg_defect_depth"] # pixels
 
                 # Prepare features for recognition
+                
+                aspect_ratio_px = width_px / height_px if height_px != 0 else 0
+                hu_norm = np.linalg.norm(np.array(pixel_features["hu_moments"]))
+                avg_color = self.compute_average_color(corrected_frame, contour)
+
 
                 features_for_recognition = {
-                    # Shape Ratios & Properties
-                    "aspect_ratio": aspect_ratio,
-                    "circularity": features["circularity"],
-                    "extent": features["extent"],
-                    # Moment Invariants
+                    "aspect_ratio": aspect_ratio_px,
+                    "circularity": pixel_features["circularity"],
+                    "extent": pixel_features["extent"],
                     "hu_norm": hu_norm,
-                    # Shape Complexity
-                    "convexity_defects_count": features["convexity_defects_count"],
-                    # Color (assuming consistent lighting)
-                    "avg_color_r": avg_color[2], # Index 2 for Red in BGR
-                    "avg_color_g": avg_color[1], # Index 1 for Green
-                    "avg_color_b": avg_color[0]  # Index 0 for Blue
-                    # --- MM features are NOT included here ---
+                    "convexity_defects_count": pixel_features["convexity_defects_count"],
+                    "avg_color_r": avg_color[2],
+                    "avg_color_g": avg_color[1],
+                    "avg_color_b": avg_color[0]
                 }
+
+
 
                 # Recognize object category
                 predicted_category = self.recognize_object(features_for_recognition, self.IDENTIFICATION_CONFIG, self.features_list)
@@ -274,43 +408,45 @@ class ObjectDetector:
 
                 # Build detection dictionary
                 detection_data = {
-                    'center': center_mm,         # (x, y) in mm
-                    'width': width_mm,           # width in mm
-                    'height': height_mm,         # height in mm
-                    'angle': angle,              # degrees
-                    'area': area_mm2,            # area in mm^2
-                    'aspect_ratio': aspect_ratio,
-                    'perimeter': perimeter_mm,   # perimeter in mm
-                    'extent': features["extent"],
-                    'hu_moments': features["hu_moments"], # Original Hu moments
-                    'circularity': features["circularity"],
-                    'convexity_defects_count': features["convexity_defects_count"],
-                    'avg_defect_depth': avg_defect_depth_mm, # Avg defect depth in mm
-                    'avg_color': avg_color,      # Average BGR color tuple
+                    'center': center_mm, # Now (x, y) in mm
+                    'width': width_mm,   # width in mm
+                    'height': height_mm, # height in mm
+                    'angle': angle_deg,  # angle from pixel-space minAreaRect, interpretation might need care
+                    'area': area_mm2,    # area in mm^2
+                    'aspect_ratio': aspect_ratio_px, # or width_mm / height_mm if preferred
+                    'perimeter': perimeter_mm, # perimeter in mm
+                    'extent': pixel_features["extent"],
+                    'hu_moments': pixel_features["hu_moments"],
+                    'circularity': pixel_features["circularity"],
+                    'convexity_defects_count': pixel_features["convexity_defects_count"],
+                    'avg_defect_depth': avg_defect_depth_mm, # avg defect depth, approximately in mm
+                    'avg_color': avg_color,
                     'predicted_category': predicted_category,
-                    'contour': contour           # Keep original contour in pixels for drawing/analysis
+                    'contour': contour # Original pixel contour for drawing
                 }
+                
                 detections.append(detection_data)
-                processed_centers.append(center_px) # Add center to processed list
+                processed_centers.append(center_px_tuple) # Add center to processed list
 
                 # Record data for potential CSV export
                 # Using mm for physical measurements, unitless for ratios/counts
                 self.records.append({
+
                     'frame': frame_counter,
                     'center_x_mm': center_mm[0],
                     'center_y_mm': center_mm[1],
                     'width_mm': width_mm,
                     'height_mm': height_mm,
-                    'angle_deg': angle,
+                    'angle_deg': angle_deg,
                     'area_mm2': area_mm2,
-                    'aspect_ratio': aspect_ratio,
+                    'aspect_ratio': aspect_ratio_px,
                     'perimeter_mm': perimeter_mm,
-                    'extent': features["extent"],
-                    'hu_norm': hu_norm, # Use norm for single value?
-                    'circularity': features["circularity"],
-                    'defects_count': features["convexity_defects_count"],
+                    'extent': pixel_features["extent"],
+                    'hu_norm': hu_norm,
+                    'circularity': pixel_features["circularity"],
+                    'defects_count': pixel_features["convexity_defects_count"],
                     'defect_depth_mm': avg_defect_depth_mm,
-                    'avg_color_r': avg_color[2], # Split color for CSV
+                    'avg_color_r': avg_color[2],
                     'avg_color_g': avg_color[1],
                     'avg_color_b': avg_color[0],
                     'category': predicted_category
@@ -333,25 +469,26 @@ class ObjectDetector:
         objects_overlayed = corrected_frame.copy()
         for det in final_detections:
             try:
-                # Convert center back to pixels for drawing
-                center_x_px = int(det['center'][0] / conversion_factor)
-                center_y_px = int(det['center'][1] / conversion_factor)
+
 
                 # Draw bounding box (optional, using boxPoints)
                 # box = cv2.boxPoints(( (center_x_px, center_y_px), (det['width']/conversion_factor, det['height']/conversion_factor), det['angle'] ))
                 # box = np.intp(box) # np.intp is recommended for indexing
                 # cv2.drawContours(objects_overlayed, [box], 0, (255, 0, 0), 1) # Blue box
 
+                    # Get pixel center from the original contour's bounding rect for label positioning
+                rect_for_drawing = cv2.minAreaRect(det['contour'])
+                center_x_px_draw, center_y_px_draw = int(rect_for_drawing[0][0]), int(rect_for_drawing[0][1])
                 # Draw contour
                 cv2.drawContours(objects_overlayed, [det['contour']], -1, (0, 255, 0), 2) # Green contour
 
                 # Draw center point
-                cv2.circle(objects_overlayed, (center_x_px, center_y_px), 4, (0, 0, 255), -1) # Red center
+                cv2.circle(objects_overlayed, (center_x_px_draw, center_y_px_draw), 4, (0, 0, 255), -1) # Red center
 
                 # Prepare and draw label
                 label = f"ID:{det.get('track_id','?')} {det.get('predicted_category','unk')} {det.get('width',0):.1f}x{det.get('height',0):.1f}"
                 (label_width, label_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-                label_origin = (center_x_px + 8, center_y_px + label_height // 2) # Position relative to center
+                label_origin = (center_x_px_draw + 8, center_y_px_draw + label_height // 2) # Position relative to center
                 # Background rectangle for label
                 cv2.rectangle(objects_overlayed, (label_origin[0] - 2, label_origin[1] - label_height - baseline + 2),
                               (label_origin[0] + label_width + 2, label_origin[1] + baseline -2), (0, 0, 0), cv2.FILLED)
@@ -379,26 +516,25 @@ class ObjectDetector:
             Also updates `self.tracks` and `self.next_track_id`.
         """
         # Get centers from active tracks and current detections (ensure they are in mm)
-        track_centers = np.array([track['last_center_mm'] for track in self.tracks]) if self.tracks else np.empty((0, 2))
-        detection_centers = np.array([det['center'] for det in current_detections]) if current_detections else np.empty((0, 2))
+        track_centers_mm = np.array([track['last_center_mm'] for track in self.tracks]) if self.tracks else np.empty((0, 2))
+        detection_centers_mm = np.array([det['center'] for det in current_detections]) if current_detections else np.empty((0, 2))
 
         assigned_detection_indices = set()
         matched_track_indices = set()
 
         # --- Matching using Hungarian Algorithm ---
-        if track_centers.size > 0 and detection_centers.size > 0:
+        if track_centers_mm.size > 0 and detection_centers_mm.size > 0:
             # Calculate cost matrix (Euclidean distance in mm)
             # distance shape: (num_tracks, num_detections)
-            distances = np.linalg.norm(track_centers[:, np.newaxis, :] - detection_centers[np.newaxis, :, :], axis=2)
+            distances_mm  = np.linalg.norm(track_centers_mm[:, np.newaxis, :] - detection_centers_mm[np.newaxis, :, :], axis=2)
 
             # Apply Hungarian algorithm
-            track_indices, detection_indices = linear_sum_assignment(distances)
+            track_indices, detection_indices = linear_sum_assignment(distances_mm)
 
             # Filter matches based on max distance threshold
-            max_distance_mm = var.MAX_DISTANCE * self.detection_params.get("CONVERSION_FACTOR", 1.0) # Convert pixel threshold to mm
-
+            max_matching_distance_mm = getattr(var, 'MAX_DISTANCE_MM', 10.0)
             for r, c in zip(track_indices, detection_indices):
-                if distances[r, c] < max_distance_mm:
+                if distances_mm[r, c] < max_matching_distance_mm:
                     track = self.tracks[r]
                     detection = current_detections[c]
 
@@ -416,7 +552,7 @@ class ObjectDetector:
                     # print(f"[TRACK] Matched Track {track['id']} to Detection {c} (Dist: {distances[r,c]:.2f}mm)")
 
 
-        # --- Handle Unmatched Detections (New Tracks) ---
+
         for i, det in enumerate(current_detections):
             if i not in assigned_detection_indices:
                 det['track_id'] = self.next_track_id

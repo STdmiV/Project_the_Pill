@@ -31,7 +31,7 @@ class DataGatheringProcessor:
     Handles object detection, tracking, facilitates manual classification,
     and performs continuous data saving for confirmed objects within a session.
     """
-    def __init__(self, detection_params, request_classification_callback, update_status_callback):
+    def __init__(self, detection_params, request_classification_callback, update_status_callback, homography_matrix=None):
         """
         Args:
             detection_params (dict): Dictionary containing detection parameters
@@ -45,13 +45,16 @@ class DataGatheringProcessor:
         self.detection_params = detection_params
         self.request_classification_callback = request_classification_callback
         self.update_status_callback = update_status_callback
+        
+        self.homography_matrix_to_mm = homography_matrix # Store the homography matrix
+        if self.homography_matrix_to_mm is None:
+            logger.warning("DataGatheringProcessor initialized without a homography matrix. Measurements will be in PIXELS or use fallback CONVERSION_FACTOR.")
 
         self.calibration_file = var.CALIBRATION_FILE
         self.next_track_id = 1
         self.tracks = []
         self.MAX_TRACK_LOST_FRAMES = var.MAX_LOST_FRAMES
-        self.MAX_DISTANCE = var.MAX_DISTANCE # Max distance in pixels, needs conversion factor applied
-
+        self.MAX_DISTANCE_MM = getattr(var, 'MAX_DISTANCE_MM', 10.0)
         # --- State for Manual Classification ---
         self._current_target_track_id = None # Track ID currently presented to user
         self._pending_classification_data = {} # Stores {track_id: detection_data} for objects awaiting classification
@@ -143,57 +146,106 @@ class DataGatheringProcessor:
 
         # --- 6. Process Valid Contours & Feature Extraction ---
         detections = []
-        conversion_factor = self.detection_params.get("CONVERSION_FACTOR", 1.0)
-        if conversion_factor <= 0:
-            logger.warning(f"Invalid conversion factor ({conversion_factor}), using 1.0.")
-            conversion_factor = 1.0
 
         for contour in valid_contours:
             try:
-                rect = cv2.minAreaRect(contour)
-                center_px = self.get_center(rect) # Center in pixels
-                (width_px, height_px), angle = rect[1], rect[2]
+                rect_px = cv2.minAreaRect(contour) # In pixels
+                center_px_tuple = self.get_center(rect_px) # (x_px, y_px)
+                (width_px, height_px), angle_deg = rect_px[1], rect_px[2]
+                width_px, height_px = abs(width_px), abs(height_px) # Ensure positive dimensions
 
-                # Ensure width/height are non-negative
-                width_px, height_px = abs(width_px), abs(height_px)
-                # Optional: Consistent orientation (e.g., width is always the longer side)
-                # if width_px < height_px:
-                #    width_px, height_px = height_px, width_px
-                #    angle = (angle + 90) % 180
-
-                features = self.compute_shape_features(contour, rect)
+                # Calculate pixel-based shape features (invariant to scale or used for ratios)
+                pixel_features = self.compute_shape_features(contour, rect_px) # compute_shape_features uses pixel data
                 avg_color = self.compute_average_color(corrected_frame, contour)
+                
+            # --- Initialize metric values ---
+                center_mm = (0,0)
+                width_mm = 0
+                height_mm = 0
+                area_mm2 = 0
+                perimeter_mm = 0
+                avg_defect_depth_mm = 0
+                
+                if self.homography_matrix_to_mm is not None:
+                    # --- Transform points using homography ---
+                    center_px_arr = np.array([[center_px_tuple]], dtype="float32")
+                    transformed_center_arr = cv2.perspectiveTransform(center_px_arr, self.homography_matrix_to_mm)
+                    if transformed_center_arr is not None and transformed_center_arr.size > 0:
+                        center_mm = (transformed_center_arr[0][0][0], transformed_center_arr[0][0][1])
+                    else: # Should not happen if matrix and points are valid
+                        logger.warning(f"Center point transformation failed for contour at {center_px_tuple}")
+                        center_mm = center_px_tuple # Fallback to pixels
 
-                # Calculate features in mm
-                center_mm = (center_px[0] * conversion_factor, center_px[1] * conversion_factor)
-                width_mm = width_px * conversion_factor
-                height_mm = height_px * conversion_factor
-                area_mm2 = features["area"] * (conversion_factor ** 2)
-                perimeter_mm = features["perimeter"] * conversion_factor
-                avg_defect_depth_mm = features["avg_defect_depth"] * conversion_factor
-                aspect_ratio = width_px / height_px if height_px > 1e-6 else 0 # Avoid division by zero
+                    box_points_px = cv2.boxPoints(rect_px)
+                    box_points_px_reshaped = box_points_px.reshape(-1, 1, 2).astype(np.float32)
+                    transformed_box_points_mm_arr = cv2.perspectiveTransform(box_points_px_reshaped, self.homography_matrix_to_mm)
 
-                # Use Hu Moment Norm for simplicity in CSV, or store all 7? Let's keep norm.
-                hu_norm = np.linalg.norm(np.array(features["hu_moments"]))
+                    if transformed_box_points_mm_arr is not None and len(transformed_box_points_mm_arr) == 4:
+                        side1_mm = np.linalg.norm(transformed_box_points_mm_arr[0][0] - transformed_box_points_mm_arr[1][0])
+                        side2_mm = np.linalg.norm(transformed_box_points_mm_arr[1][0] - transformed_box_points_mm_arr[2][0])
+                        
+                        if width_px >= height_px:
+                            width_mm = max(side1_mm, side2_mm)
+                            height_mm = min(side1_mm, side2_mm)
+                        else:
+                            width_mm = min(side1_mm, side2_mm)
+                            height_mm = max(side1_mm, side2_mm)
+                        
+                        area_mm2 = cv2.contourArea(transformed_box_points_mm_arr)
+                        perimeter_mm = cv2.arcLength(transformed_box_points_mm_arr.astype(np.float32), closed=True)
+                        
+                        # Approximate scaling for avg_defect_depth (ideally transform defect points)
+                        if width_px > 0 and width_mm > 0:
+                            avg_scale_for_defects = width_mm / width_px
+                            avg_defect_depth_mm = pixel_features["avg_defect_depth"] * avg_scale_for_defects
+                        else:
+                             avg_defect_depth_mm = pixel_features["avg_defect_depth"] # Use pixel value if scale cannot be determined
+                    else:
+                        logger.warning(f"Box points transformation failed for contour at {center_px_tuple}. Using pixel dimensions.")
+                        # Fallback to pixel dimensions if transform fails
+                        width_mm = width_px
+                        height_mm = height_px
+                        area_mm2 = pixel_features["area"]
+                        perimeter_mm = pixel_features["perimeter"]
+                        avg_defect_depth_mm = pixel_features["avg_defect_depth"]
+                else:
+                    # --- Fallback to CONVERSION_FACTOR if homography is NOT available ---
+                    # This part is crucial for graceful degradation or if you intend mixed mode.
+                    # If homography is ALWAYS expected, this 'else' might be an error condition.
+                    logger.debug("No homography matrix, using CONVERSION_FACTOR from detection_params as fallback.")
+                    conversion_factor_fallback = self.detection_params.get("CONVERSION_FACTOR", 1.0)
+                    if conversion_factor_fallback <= 0:
+                        logger.warning(f"Fallback CONVERSION_FACTOR ({conversion_factor_fallback}) is invalid, using 1.0 (pixels).")
+                        conversion_factor_fallback = 1.0
+                    
+                    center_mm = (center_px_tuple[0] * conversion_factor_fallback, center_px_tuple[1] * conversion_factor_fallback)
+                    width_mm = width_px * conversion_factor_fallback
+                    height_mm = height_px * conversion_factor_fallback
+                    area_mm2 = pixel_features["area"] * (conversion_factor_fallback**2)
+                    perimeter_mm = pixel_features["perimeter"] * conversion_factor_fallback
+                    avg_defect_depth_mm = pixel_features["avg_defect_depth"] * conversion_factor_fallback
+
+                aspect_ratio_px = width_px / height_px if height_px > 1e-6 else 0
+                hu_norm = np.linalg.norm(np.array(pixel_features["hu_moments"]))
 
                 detection_data = {
                     'frame': frame_counter,
-                    'center': center_mm, # Store tuple (x_mm, y_mm)
+                    'center': center_mm, # Tuple (x_mm, y_mm)
                     'width': width_mm,
                     'height': height_mm,
-                    'angle': angle,
+                    'angle': angle_deg, # Still from pixel-space minAreaRect
                     'area_mm2': area_mm2,
-                    'aspect_ratio': aspect_ratio,
+                    'aspect_ratio': aspect_ratio_px, # Based on pixel dimensions
                     'perimeter_mm': perimeter_mm,
-                    'extent': features["extent"],
+                    'extent': pixel_features["extent"],
                     'hu_norm': hu_norm,
-                    'circularity': features["circularity"],
-                    'convexity_defects_count': features["convexity_defects_count"],
+                    'circularity': pixel_features["circularity"],
+                    'convexity_defects_count': pixel_features["convexity_defects_count"],
                     'avg_defect_depth_mm': avg_defect_depth_mm,
-                    'avg_color_r': avg_color[2], # BGR from OpenCV -> R,G,B
+                    'avg_color_r': avg_color[2],
                     'avg_color_g': avg_color[1],
                     'avg_color_b': avg_color[0],
-                    'contour': contour # Keep contour in pixels for drawing
+                    'contour': contour # Pixel contour for drawing
                 }
                 detections.append(detection_data)
             except cv2.error as e_contour_cv:
@@ -204,7 +256,7 @@ class DataGatheringProcessor:
                  continue
 
         # --- 7. Assign Tracking IDs ---
-        final_detections = self.assign_ids(detections, conversion_factor) # Pass conversion_factor
+        final_detections = self.assign_ids(detections) # Pass conversion_factor
 
         # --- 8. Save Data for Confirmed Tracks ---
         # This happens BEFORE queuing new objects
@@ -275,50 +327,38 @@ class DataGatheringProcessor:
             if track_id is None: continue
 
             try:
-                # Convert center back to pixels for drawing
-                center_x_px = 0
-                center_y_px = 0
-                if conversion_factor != 0:
-                    center_x_px = int(det['center'][0] / conversion_factor)
-                    center_y_px = int(det['center'][1] / conversion_factor)
-                else:
-                    logger.error("Cannot calculate pixel coordinates: Conversion factor is zero.")
-                    continue # Skip drawing this detection
-
-                # --- Determine Color, Thickness, and Label based on State ---
-                draw_color = (128, 128, 128) # Default: GRAY for undefined
-                thickness = 1                # Default: Thin for undefined
-                label_prefix = f"ID:{track_id}" # Default: Basic ID label
-
+                # For drawing, use the original pixel contour and its properties
+                # The 'contour' in det is already in pixels.
+                rect_for_drawing_px = cv2.minAreaRect(det['contour'])
+                center_x_px_draw, center_y_px_draw = int(rect_for_drawing_px[0][0]), int(rect_for_drawing_px[0][1])
+                
+                # ... (logic for draw_color, thickness, label_prefix based on state - no change) ...
+                draw_color = (128, 128, 128); thickness = 1
+                label_prefix = f"ID:{track_id}"
                 if track_id == self._current_target_track_id:
-                    # State: Current Target for Classification
-                    draw_color = (0, 0, 255) # RED
-                    thickness = 4            # Thicker
+                    draw_color = (0, 0, 255); thickness = 4
                     label_prefix = f"CLASSIFY -> ID:{track_id}"
-                    # Copy the frame *before* drawing this specific object's overlay
-                    # to send the correct context to the GUI callback.
-                    target_frame_for_callback = objects_overlayed.copy()
-
+                    target_frame_for_callback = objects_overlayed.copy() # Before drawing current target
                 elif track_id in self._confirmed_classifications:
-                    # State: Confirmed/Saved Object
-                    draw_color = (0, 255, 0) # GREEN
-                    thickness = 2            # Standard thickness
+                    draw_color = (0, 255, 0); thickness = 2
+                    category = self._confirmed_classifications.get(track_id, "SAVED")
                     try:
-                        category = self._confirmed_classifications[track_id]
-                        # Add short category code like [CW]
-                        label_prefix += f" [{category.split('_')[0][0].upper()}{category.split('_')[1][0].upper()}]"
-                    except (KeyError, IndexError):
-                         # Fallback if category string is unexpected
-                        label_prefix += " [SAVED]"
-
-                # Else: Keep the default Gray color and thin thickness for undefined objects
+                        # Create short category code like [CW] for "circle_white"
+                        parts = category.split('_')
+                        if len(parts) >= 2:
+                            short_code = "".join(p[0].upper() for p in parts if p)
+                            label_prefix += f" [{short_code}]"
+                        else:
+                            label_prefix += f" [{category.upper()[:3]}]" # Fallback for single word categories
+                    except Exception: # Broad catch for any issue with string parsing
+                         label_prefix += " [SAVED]"
 
                 # --- Draw Contour and Label ---
                 # Draw the contour using the determined style
                 cv2.drawContours(objects_overlayed, [det['contour']], -1, draw_color, thickness)
 
                 # Draw center point (always red for visibility)
-                cv2.circle(objects_overlayed, (center_x_px, center_y_px), 5, (0, 0, 255), -1)
+                cv2.circle(objects_overlayed, (center_x_px_draw, center_y_px_draw), 5, (0, 0, 255), -1)
 
                 # Prepare and draw label text
                 label = label_prefix # Use the label determined above
@@ -326,7 +366,7 @@ class DataGatheringProcessor:
                 font_scale = 0.6
                 text_thickness = 2
                 (label_width, label_height), baseline = cv2.getTextSize(label, font, font_scale, text_thickness)
-                label_origin = (center_x_px + 10, center_y_px + label_height // 2)
+                label_origin = (center_x_px_draw + 10, center_y_px_draw + label_height // 2)
 
                 # Background rectangle
                 cv2.rectangle(objects_overlayed, (label_origin[0] - 3, label_origin[1] - label_height - baseline + 2),
@@ -523,7 +563,7 @@ class DataGatheringProcessor:
 
 
 
-    def assign_ids(self, current_detections: list, conversion_factor: float) -> list:
+    def assign_ids(self, current_detections: list) -> list:
         """
         Assigns track IDs using Hungarian algorithm based on distance in mm.
         Adds 'track_id' key to each detection dictionary. Handles lost tracks.
@@ -545,8 +585,7 @@ class DataGatheringProcessor:
         # --- Matching using Hungarian Algorithm ---
         if track_centers_mm.size > 0 and detection_centers_mm.size > 0:
             distances_mm = np.linalg.norm(track_centers_mm[:, np.newaxis, :] - detection_centers_mm[np.newaxis, :, :], axis=2)
-            max_dist_pixels = var.MAX_DISTANCE
-            max_distance_mm = max_dist_pixels * conversion_factor
+            max_matching_distance_mm = self.MAX_DISTANCE_MM 
 
             try:
                 track_indices, detection_indices = linear_sum_assignment(distances_mm)
@@ -555,11 +594,12 @@ class DataGatheringProcessor:
                 track_indices, detection_indices = [], []
 
             for r, c in zip(track_indices, detection_indices):
-                if distances_mm[r, c] < max_distance_mm:
-                    if r < len(self.tracks) and c < len(current_detections): # Safety check for indices
+
+                if r < len(self.tracks) and c < len(current_detections):
+                    if distances_mm[r, c] < max_matching_distance_mm:
                         track = self.tracks[r]
                         detection = current_detections[c]
-                        track['last_center_mm'] = detection['center']
+                        track['last_center_mm'] = detection['center'] # Already in mm
                         track['lost_frames'] = 0
                         detection['track_id'] = track['id']
                         assigned_detection_indices.add(c)

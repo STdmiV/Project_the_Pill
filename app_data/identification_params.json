@@ -36,6 +36,154 @@
                 }
             },
             "color": "#ffffff"
+        },
+        "Circle_Pink": {
+            "parameters": {
+                "aspect_ratio": {
+                    "min": 0.94,
+                    "max": 1.0535
+                },
+                "circularity": {
+                    "min": 0.8733,
+                    "max": 0.9145
+                },
+                "extent": {
+                    "min": 0.713,
+                    "max": 0.7744
+                },
+                "hu_norm": {
+                    "min": 0.15942,
+                    "max": 0.15987
+                },
+                "convexity_defects_count": {
+                    "min": 8.0,
+                    "max": 14.0
+                },
+                "avg_color_r": {
+                    "min": 190.0,
+                    "max": 220.0
+                },
+                "avg_color_g": {
+                    "min": 149.0,
+                    "max": 179.0
+                },
+                "avg_color_b": {
+                    "min": 170.0,
+                    "max": 194.0
+                }
+            },
+            "color": "#ff00ff"
+        },
+        "Cylinder_White": {
+            "parameters": {
+                "aspect_ratio": {
+                    "min": 0.3999,
+                    "max": 0.5299999999999999
+                },
+                "circularity": {
+                    "min": 0.6665000000000002,
+                    "max": 0.7494
+                },
+                "extent": {
+                    "min": 0.5086,
+                    "max": 0.694
+                },
+                "hu_norm": {
+                    "min": 0.2042,
+                    "max": 0.2397999999999999
+                },
+                "convexity_defects_count": {
+                    "min": 9.0,
+                    "max": 16.0
+                },
+                "avg_color_r": {
+                    "min": 230.39999999999986,
+                    "max": 237.3000000000001
+                },
+                "avg_color_g": {
+                    "min": 222.0,
+                    "max": 233.0
+                },
+                "avg_color_b": {
+                    "min": 237.5999999999998,
+                    "max": 242.69999999999996
+                }
+            },
+            "color": "#ffffff"
+        },
+        "Rhombus_White": {
+            "parameters": {
+                "aspect_ratio": {
+                    "min": 0.7442,
+                    "max": 1.3636
+                },
+                "circularity": {
+                    "min": 0.7149,
+                    "max": 0.8012
+                },
+                "extent": {
+                    "min": 0.5973,
+                    "max": 0.73
+                },
+                "hu_norm": {
+                    "min": 0.17209,
+                    "max": 0.17544
+                },
+                "convexity_defects_count": {
+                    "min": 6.0,
+                    "max": 13.0
+                },
+                "avg_color_r": {
+                    "min": 226.49999999999991,
+                    "max": 236.09999999999994
+                },
+                "avg_color_g": {
+                    "min": 218.0,
+                    "max": 230.0
+                },
+                "avg_color_b": {
+                    "min": 236.5999999999999,
+                    "max": 243.7999999999999
+                }
+            },
+            "color": "#ffffff"
+        },
+        "Rhombus_Black": {
+            "parameters": {
+                "aspect_ratio": {
+                    "min": 0.7735,
+                    "max": 1.2973
+                },
+                "circularity": {
+                    "min": 0.7066000000000001,
+                    "max": 0.8317
+                },
+                "extent": {
+                    "min": 0.5831,
+                    "max": 0.7188
+                },
+                "hu_norm": {
+                    "min": 0.16819,
+                    "max": 0.17383
+                },
+                "convexity_defects_count": {
+                    "min": 7.9,
+                    "max": 14.0
+                },
+                "avg_color_r": {
+                    "min": 14.0,
+                    "max": 44.0
+                },
+                "avg_color_g": {
+                    "min": 20.0,
+                    "max": 46.0
+                },
+                "avg_color_b": {
+                    "min": 50.0,
+                    "max": 78.1
+                }
+            },
+            "color": "#000000"
         }
     },
     "features": [

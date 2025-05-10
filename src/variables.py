@@ -19,6 +19,11 @@ DATA_COLLECTION_CSV = os.path.join(APP_DIR, "collected_data.csv")
 IDENTIFICATION_CONFIG = os.path.join(APP_DIR, "identification_params.json")
 PARAMETERS_CONFIG = os.path.join(APP_DIR, "detection_params.json")
 
+A4_WIDTH_MM = 210.0
+A4_HEIGHT_MM = 297.0
+MAX_DISTANCE_MM = 10.0
+MAX_FRAMES_TO_FIND_WORKING_AREA = 200 # Number of frames to try for WA detection
+
 
 # Default Video Paths
 CALIBRATION_VIDEO_PATH = r'C:\Users\Stas\Videos\Pillproject\cali.mp4'
@@ -76,7 +81,7 @@ WORKING_AREA_MAX_SIZE_RATIO = 1  # 90% of frame width/height
 
 
 # Object Tracking Parameters
-MAX_LOST_FRAMES = 5  # Frames before a track is considered lost
+MAX_LOST_FRAMES = 30  # Frames before a track is considered lost
 MAX_DISTANCE = 50  # Maximum pixel distance between frames to track an object
 DATA_GATHERING_REQUEUE_DELAY = 2.0 # Seconds to wait before asking again about a skipped/accepted object ID
 
@@ -106,7 +111,7 @@ MODBUS_REGISTERS_PER_OBJECT = 7     # Number of registers used per object (id, x
 # Object categories (example category codes for robot communication)
 OBJECT_CATEGORIES = {
     "unknown": 0,
-    "circle_white": 1,
+    "Circle_White": 1,
     "circle_red": 2,
     "rectangle_white": 3,
     "rectangle_red": 4,
